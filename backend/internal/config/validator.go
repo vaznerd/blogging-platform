@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func Validate(c *Config) error {
+func (c *Config) Validate() error {
 	if c.App.Name == "" {
 		return fmt.Errorf("app.name is required")
 	}

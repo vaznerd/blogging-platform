@@ -52,8 +52,8 @@ type DBConfig struct {
 	User            string        `koanf:"user"`
 	Password        string        `koanf:"password"`
 	Name            string        `koanf:"name"`
-	MaxOpenConns    int           `koanf:"max_open_conns"`
-	MaxIdleConns    int           `koanf:"max_idle_conns"`
+	MaxOpenConns    int32         `koanf:"max_open_conns"`
+	MaxIdleConns    int32         `koanf:"max_idle_conns"`
 	ConnMaxLifetime time.Duration `koanf:"conn_max_lifetime"`
 	ConnMaxIdleTime time.Duration `koanf:"conn_max_idle_time"`
 	SSLMode         string        `koanf:"ssl_mode"`
@@ -74,7 +74,7 @@ type ResendConfig struct {
 	APIKey string `koanf:"api_key"`
 }
 
-func Load() (*Config, error) {
+func LoadConfig() (*Config, error) {
 	k := koanf.New(".")
 	cfg := &Config{}
 
