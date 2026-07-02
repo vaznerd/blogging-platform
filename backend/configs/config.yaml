@@ -39,3 +39,7 @@ log:
   level: "info"
   format: "text"
   add_source: true
+
+jwt:
+  access_token_ttl: "15m"
+  refresh_token_ttl: "168h"

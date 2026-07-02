@@ -120,6 +120,13 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("log.format must be 'text' or 'json'")
 	}
 
+	if c.JWT.AccessTokenTTL <= 0 {
+		return fmt.Errorf("jwt access token ttl must be greater than 0")
+	}
+	if c.JWT.RefreshTokenTTL <= 0 {
+		return fmt.Errorf("jwt refresh token ttl must be greater than 0")
+	}
+
 	if c.App.Environment == "production" {
 		if c.App.Debug {
 			return fmt.Errorf("app.debug must be false in production")

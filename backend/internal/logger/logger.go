@@ -7,7 +7,7 @@ import (
 	"codeberg.org/vaznerd/blogging-platform/internal/config"
 )
 
-func NewLogger(cfg config.LogConfig) *slog.Logger {
+func NewLogger(cfg *config.LogConfig) *slog.Logger {
 	var handler slog.Handler
 
 	opts := &slog.HandlerOptions{

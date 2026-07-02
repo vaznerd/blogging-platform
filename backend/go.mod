@@ -3,6 +3,7 @@ module codeberg.org/vaznerd/blogging-platform
 go 1.26.4
 
 require (
+	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/joho/godotenv v1.5.1
 	github.com/knadh/koanf/parsers/yaml v1.1.0
@@ -10,6 +11,7 @@ require (
 	github.com/knadh/koanf/providers/file v1.2.1
 	github.com/knadh/koanf/v2 v2.3.5
 	github.com/redis/go-redis/v9 v9.21.0
+	github.com/resend/resend-go/v3 v3.9.2
 )
 
 require (

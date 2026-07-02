@@ -21,6 +21,7 @@ type Config struct {
 	DB     DBConfig     `koanf:"db"`
 	Redis  RedisConfig  `koanf:"redis"`
 	Resend ResendConfig `koanf:"resend"`
+	JWT    JWTConfig    `koanf:"jwt"`
 }
 
 type AppConfig struct {
@@ -70,6 +71,12 @@ type RedisConfig struct {
 	WriteTimeout time.Duration `koanf:"write_timeout"`
 }
 
+type JWTConfig struct {
+	Secret          string        `koanf:"jwt_secret"`
+	AccessTokenTTL  time.Duration `koanf:"access_token_ttl"`
+	RefreshTokenTTL time.Duration `koanf:"refresh_token_ttl"`
+}
+
 type ResendConfig struct {
 	APIKey string `koanf:"api_key"`
 }
@@ -97,6 +104,12 @@ func LoadConfig() (*Config, error) {
 	}
 	if cfg.Resend.APIKey == "" {
 		return cfg, fmt.Errorf("resend api key not found")
+	}
+	if val := os.Getenv("JWT_SECRET"); val != "" {
+		cfg.JWT.Secret = val
+	}
+	if cfg.JWT.Secret == "" {
+		return cfg, fmt.Errorf("jwt secret not found")
 	}
 
 	return cfg, nil

@@ -2,16 +2,24 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 
+	"codeberg.org/vaznerd/blogging-platform/internal/auth"
 	"codeberg.org/vaznerd/blogging-platform/internal/config"
 	"codeberg.org/vaznerd/blogging-platform/internal/logger"
+	"codeberg.org/vaznerd/blogging-platform/internal/server"
+	"codeberg.org/vaznerd/blogging-platform/internal/user"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/resend/resend-go/v3"
 )
 
 func main() {
@@ -32,8 +40,10 @@ func run() error {
 		bootstrapLogger.Error("Configuration validation failed", "error", err)
 		return err
 	}
-	log := logger.NewLogger(cfg.Log)
+	log := logger.NewLogger(&cfg.Log)
 	// write a method to the cfg in config.go to log all config
+
+	mail := resend.NewClient(cfg.Resend.APIKey)
 
 	q := url.Values{}
 	q.Set("sslmode", cfg.DB.SSLMode)
@@ -78,5 +88,47 @@ func run() error {
 	}
 	log.Info("redis connection established")
 
+	authService := auth.NewService(&cfg.JWT, dbpool)
+	userRepository := user.NewRepository(dbpool, rdb, log)
+	userService := user.NewService(userRepository, log, mail)
+	router := server.NewRouter(*userService, *authService, log, mail)
+	server := &http.Server{
+		Addr:           ":" + cfg.Server.Port,
+		Handler:        router,
+		ReadTimeout:    cfg.Server.ReadTimeout,
+		WriteTimeout:   cfg.Server.WriteTimeout,
+		IdleTimeout:    cfg.Server.IdleTimeout,
+		MaxHeaderBytes: cfg.Server.MaxHeaderBytes,
+	}
+
+	go func() {
+		log.Info("Server starting", "address", server.Addr)
+		log.Info("Health check available", "url", fmt.Sprintf("http://localhost:%s/health", cfg.Server.Port))
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error("Server error", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
+	defer cancel()
+
+	log.InfoContext(ctx, "Received shutdown signal", "signal", sig)
+	log.InfoContext(ctx, "Shutting down server gracefully...")
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.ErrorContext(ctx, "Server forced to shutdown", "error", err)
+		return err
+	}
+	dbpool.Close()
+	if err := rdb.Close(); err != nil {
+		log.ErrorContext(ctx, "rdb.Close", "error", err)
+	}
+
+	log.InfoContext(ctx, "Server exited gracefully")
 	return nil
 }
