@@ -14,6 +14,7 @@ server:
 
 db:
   host: "postgres"
+  host_go: "localhost"
   port: 5432
   user: "postgres"
   password: ""
@@ -21,20 +22,20 @@ db:
   max_open_conns: 25
   max_idle_conns: 25
   conn_max_lifetime: 5m
-  conn_max_idletime: 5m
-  sslmode: "disable"
+  conn_max_idle_time: 5m
+  ssl_mode: "disable"
 
 redis:
   db: 0
-  host: redis
-  host_go: localhost
+  host: "redis"
+  host_go: "localhost"
   port: 6379
-  password: password
+  password: "password"
   dial_timeout: 5s
   read_timeout: 3s
   write_timeout: 3s
 
-logging:
+log:
   level: "info"
   format: "text"
   add_source: true

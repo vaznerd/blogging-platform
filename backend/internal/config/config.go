@@ -1,10 +1,13 @@
 package config
 
 import (
+	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 	"time"
 
+	_ "github.com/joho/godotenv/autoload"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
@@ -44,6 +47,7 @@ type LogConfig struct {
 
 type DBConfig struct {
 	Host            string        `koanf:"host"`
+	HostGo          string        `koanf:"host_go"`
 	Port            int           `koanf:"port"`
 	User            string        `koanf:"user"`
 	Password        string        `koanf:"password"`
@@ -58,6 +62,7 @@ type DBConfig struct {
 type RedisConfig struct {
 	DB           int           `koanf:"db"`
 	Host         string        `koanf:"host"`
+	HostGo       string        `koanf:"host_go"`
 	Port         string        `koanf:"port"`
 	Password     string        `koanf:"password"`
 	DialTimeout  time.Duration `koanf:"dial_timeout"`
@@ -72,6 +77,7 @@ type ResendConfig struct {
 func Load() (*Config, error) {
 	k := koanf.New(".")
 	cfg := &Config{}
+
 	if err := k.Load(file.Provider("config/config.yaml"), yaml.Parser()); err != nil {
 		return nil, err
 	}
@@ -81,8 +87,17 @@ func Load() (*Config, error) {
 			return strings.ToLower(strings.ReplaceAll(s, "__", "."))
 		},
 	), nil)
+
 	if err := k.Unmarshal("", cfg); err != nil {
 		return nil, err
 	}
+
+	if val := os.Getenv("RESEND_API"); val != "" {
+		cfg.Resend.APIKey = val
+	}
+	if cfg.Resend.APIKey == "" {
+		return cfg, fmt.Errorf("resend api key not found")
+	}
+
 	return cfg, nil
 }
