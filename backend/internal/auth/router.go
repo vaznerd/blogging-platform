@@ -8,7 +8,7 @@ import (
 	"github.com/resend/resend-go/v3"
 )
 
-func RegisterRoutes(mux *http.ServeMux, service Service, log *slog.Logger, mail *resend.Client) {
+func RegisterRoutes(mux *http.ServeMux, service *Service, log *slog.Logger, mail *resend.Client) {
 	h := NewHandler(service, log, mail)
 	// mux.HandleFunc("GET /me", h.Me)
 	fmt.Println(h)

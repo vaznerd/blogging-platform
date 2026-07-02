@@ -11,7 +11,7 @@ import (
 	"github.com/resend/resend-go/v3"
 )
 
-func NewRouter(userService user.Service, authService auth.Service, log *slog.Logger, mail *resend.Client) http.Handler {
+func NewRouter(userService *user.Service, authService *auth.Service, log *slog.Logger, mail *resend.Client) http.Handler {
 	mux := http.NewServeMux()
 	user.RegisterRoutes(mux, userService, log, mail)
 	auth.RegisterRoutes(mux, authService, log, mail)

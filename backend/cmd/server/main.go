@@ -91,7 +91,7 @@ func run() error {
 	authService := auth.NewService(&cfg.JWT, dbpool)
 	userRepository := user.NewRepository(dbpool, rdb, log)
 	userService := user.NewService(userRepository, log, mail)
-	router := server.NewRouter(*userService, *authService, log, mail)
+	router := server.NewRouter(userService, authService, log, mail)
 	server := &http.Server{
 		Addr:           ":" + cfg.Server.Port,
 		Handler:        router,
