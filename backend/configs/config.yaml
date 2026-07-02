@@ -1,0 +1,40 @@
+app:
+  name: "Blogging Platform"
+  version: "0.0.1"
+  environment: "development"
+  debug: true
+
+server:
+  port: "8080"
+  read_timeout: 10
+  write_timeout: 10
+  idle_timeout: 120
+  shutdown_timeout: 30
+  max_header_bytes: 1048576
+
+db:
+  host: "postgres"
+  port: 5432
+  user: "postgres"
+  password: ""
+  name: "blogging"
+  max_open_conns: 25
+  max_idle_conns: 25
+  conn_max_lifetime: 5m
+  conn_max_idletime: 5m
+  sslmode: "disable"
+
+redis:
+  db: 0
+  host: redis
+  host_go: localhost
+  port: 6379
+  password: password
+  dial_timeout: 5s
+  read_timeout: 3s
+  write_timeout: 3s
+
+logging:
+  level: "info"
+  format: "text"
+  add_source: true
