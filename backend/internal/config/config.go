@@ -85,7 +85,7 @@ func LoadConfig() (*Config, error) {
 	k := koanf.New(".")
 	cfg := &Config{}
 
-	if err := k.Load(file.Provider("config/config.yaml"), yaml.Parser()); err != nil {
+	if err := k.Load(file.Provider("configs/config.yaml"), yaml.Parser()); err != nil {
 		return nil, err
 	}
 	k.Load(env.Provider("",
@@ -113,4 +113,15 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func (c *Config) LogAllConfig(log *slog.Logger) {
+	log.Info("Loaded Configuration:")
+	log.Info("App", "Name", c.App.Name, "Version", c.App.Version, "Environment", c.App.Environment, "Debug", c.App.Debug)
+	log.Info("Server", "Port", c.Server.Port, "ReadTimeout", c.Server.ReadTimeout, "WriteTimeout", c.Server.WriteTimeout, "IdleTimeout", c.Server.IdleTimeout, "ShutdownTimeout", c.Server.ShutdownTimeout, "MaxHeaderBytes", c.Server.MaxHeaderBytes)
+	log.Info("Log", "Level", c.Log.Level, "Format", c.Log.Format, "AddSource", c.Log.AddSource)
+	log.Info("Database", "Host", c.DB.Host, "HostGo", c.DB.HostGo, "Port", c.DB.Port, "User", c.DB.User, "Password", "<redacted>", "Name", c.DB.Name, "MaxOpenConns", c.DB.MaxOpenConns, "MaxIdleConns", c.DB.MaxIdleConns, "ConnMaxLifetime", c.DB.ConnMaxLifetime, "ConnMaxIdleTime", c.DB.ConnMaxIdleTime, "SSLMode", c.DB.SSLMode)
+	log.Info("Redis", "DB", c.Redis.DB, "Host", c.Redis.Host, "HostGo", c.Redis.HostGo, "Port", c.Redis.Port, "Password", "<redacted>", "DialTimeout", c.Redis.DialTimeout, "ReadTimeout", c.Redis.ReadTimeout, "WriteTimeout", c.Redis.WriteTimeout)
+	log.Info("Resend", "APIKey", "<redacted>")
+	log.Info("JWT", "Secret", "<redacted>", "AccessTokenTTL", c.JWT.AccessTokenTTL, "RefreshTokenTTL", c.JWT.RefreshTokenTTL)
 }

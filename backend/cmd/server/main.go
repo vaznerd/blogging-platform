@@ -1,4 +1,4 @@
-package server
+package main
 
 import (
 	"context"
@@ -41,7 +41,7 @@ func run() error {
 		return err
 	}
 	log := logger.NewLogger(&cfg.Log)
-	// write a method to the cfg in config.go to log all config
+	cfg.LogAllConfig(log)
 
 	mail := resend.NewClient(cfg.Resend.APIKey)
 
@@ -117,18 +117,18 @@ func run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 	defer cancel()
 
-	log.InfoContext(ctx, "Received shutdown signal", "signal", sig)
-	log.InfoContext(ctx, "Shutting down server gracefully...")
+	log.Info("Received shutdown signal", "signal", sig)
+	log.Info("Shutting down server gracefully...")
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.ErrorContext(ctx, "Server forced to shutdown", "error", err)
+		log.Error("Server forced to shutdown", "error", err)
 		return err
 	}
 	dbpool.Close()
 	if err := rdb.Close(); err != nil {
-		log.ErrorContext(ctx, "rdb.Close", "error", err)
+		log.Error("rdb.Close", "error", err)
 	}
 
-	log.InfoContext(ctx, "Server exited gracefully")
+	log.Info("Server exited gracefully")
 	return nil
 }
