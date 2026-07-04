@@ -26,17 +26,11 @@ func NewRouter(userService *user.Service, authService *auth.Service, log *slog.L
 			return
 		}
 	})
-	// TODO: add cors middleware
-	// c := cors.New(cors.Options{
-	// 	AllowedOrigins:   []string{"http://localhost:3000"},
-	// 	AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-	// 	AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
-	// 	AllowCredentials: true,
-	// 	MaxAge:           CORSMaxAge,
-	// })
+
 	stack := middleware.CreateStack(
 		middleware.RecoveryMiddleware(log),
 		middleware.LoggingMiddleware(log),
+		middleware.CorsMiddleware(),
 	)
 	return stack(mux)
 }
