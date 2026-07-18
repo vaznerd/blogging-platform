@@ -13,8 +13,8 @@ import (
 
 func NewRouter(userService *user.Service, authService *auth.Service, log *slog.Logger, mail *resend.Client) http.Handler {
 	mux := http.NewServeMux()
-	user.RegisterRoutes(mux, userService, log, mail)
 	auth.RegisterRoutes(mux, authService, log, mail)
+	user.RegisterRoutes(mux, userService, log, mail, middleware.Auth(authService.ValidateToken))
 
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
 	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)

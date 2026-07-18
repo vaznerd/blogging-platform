@@ -85,6 +85,7 @@ func run() error {
 		if err = rdb.Close(); err != nil {
 			log.Error("rdb.Close", "error", err)
 		}
+		return err
 	}
 	log.Info("redis connection established")
 
