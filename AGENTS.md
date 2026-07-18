@@ -260,3 +260,4 @@ go test ./...
 10. **Logging** — use `slog` with structured attributes, never `log.Printf`
 11. **Check Makefile** — all development commands in `make help`
 12. **No ORM** — write raw SQL with pgx, never use an ORM
+13. **Don't write code unless explicitly asked** — explain how to do things, don't create files or write code unless the user explicitly says "create it" or "write it"
