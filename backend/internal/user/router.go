@@ -1,17 +1,19 @@
 package user
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 
 	"github.com/resend/resend-go/v3"
 )
 
-func RegisterRoutes(mux *http.ServeMux, service *Service, log *slog.Logger, mail *resend.Client) {
+func RegisterRoutes(mux *http.ServeMux, service *Service, log *slog.Logger, mail *resend.Client, validateMW func(http.Handler) http.Handler) {
 	h := NewHandler(service, log, mail)
-	// mux.HandleFunc("GET /me", h.Me)
-	fmt.Println(h)
-	v1 := http.NewServeMux()
-	v1.Handle("/v1/", http.StripPrefix("/v1", mux))
+
+	// Public
+	mux.HandleFunc("GET "+RouteGetUser, h.GetUser)
+
+	// Protected
+	mux.Handle("PATCH "+RouteUpdateMe, validateMW(http.HandlerFunc(h.UpdateMe)))
+	mux.Handle("DELETE "+RouteDeleteMe, validateMW(http.HandlerFunc(h.DeleteMe)))
 }
