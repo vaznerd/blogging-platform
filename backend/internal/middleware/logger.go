@@ -9,8 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type contextKey string
-
 const ReqIDKey contextKey = "req_id"
 
 func LoggingMiddleware(log *slog.Logger) Middleware {
