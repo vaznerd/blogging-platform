@@ -13,9 +13,11 @@ import (
 	"syscall"
 
 	"codeberg.org/vaznerd/blogging-platform/internal/auth"
+	"codeberg.org/vaznerd/blogging-platform/internal/category"
 	"codeberg.org/vaznerd/blogging-platform/internal/config"
 	"codeberg.org/vaznerd/blogging-platform/internal/logger"
 	"codeberg.org/vaznerd/blogging-platform/internal/server"
+	"codeberg.org/vaznerd/blogging-platform/internal/tag"
 	"codeberg.org/vaznerd/blogging-platform/internal/user"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -28,72 +30,116 @@ func main() {
 	}
 }
 
-func run() error {
+func bootstrap() (*slog.Logger, *config.Config, *resend.Client, error) {
 	bootstrapLogger := slog.Default()
 	bootstrapLogger.Info("Starting Go Blogging platform API...")
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		bootstrapLogger.Error("Failed to load configuration", "error", err)
-		return err
+		return nil, nil, nil, err
 	}
-	if err := cfg.Validate(); err != nil {
-		bootstrapLogger.Error("Configuration validation failed", "error", err)
-		return err
+	if valErr := cfg.Validate(); valErr != nil {
+		bootstrapLogger.Error("Configuration validation failed", "error", valErr)
+		return nil, nil, nil, valErr
 	}
 	log := logger.NewLogger(&cfg.Log)
 	cfg.LogAllConfig(log)
 
 	mail := resend.NewClient(cfg.Resend.APIKey)
 
+	return log, cfg, mail, nil
+}
+
+func connectDB(cfg *config.Config, log *slog.Logger) (*pgxpool.Pool, error) {
 	q := url.Values{}
 	q.Set("sslmode", cfg.DB.SSLMode)
 	u := url.URL{
 		Scheme:   "postgres",
 		User:     url.UserPassword(cfg.DB.User, cfg.DB.Password),
-		Host:     net.JoinHostPort(cfg.DB.HostGo, strconv.Itoa(cfg.DB.Port)),
+		Host:     net.JoinHostPort(cfg.DB.Host, strconv.Itoa(cfg.DB.Port)),
 		Path:     cfg.DB.Name,
 		RawQuery: q.Encode(),
 	}
 	dbconfig, err := pgxpool.ParseConfig(u.String())
 	if err != nil {
-		log.Error("failed to parse Postgress config", "error", err)
-		return err
+		return nil, fmt.Errorf("parse postgres config: %w", err)
 	}
 	dbconfig.MaxConns = cfg.DB.MaxOpenConns
-	dbconfig.MinConns = cfg.DB.MaxIdleConns
+	dbconfig.MinConns = 5
 	dbconfig.MaxConnLifetime = cfg.DB.ConnMaxLifetime
 	dbconfig.MaxConnIdleTime = cfg.DB.ConnMaxIdleTime
+
 	dbpool, err := pgxpool.NewWithConfig(context.Background(), dbconfig)
 	if err != nil {
-		log.Error("failed to connect to DB", "error", err)
-		return err
+		return nil, fmt.Errorf("connect to db: %w", err)
 	}
-	if err = dbpool.Ping(context.Background()); err != nil {
-		log.Error("failed to ping Postgress", "error", err)
+	if pingErr := dbpool.Ping(context.Background()); pingErr != nil {
 		dbpool.Close()
-		return err
+		return nil, fmt.Errorf("ping postgres: %w", pingErr)
 	}
 	log.Info("postgress connection established")
 
+	return dbpool, nil
+}
+
+func connectRedis(cfg *config.Config, log *slog.Logger) (*redis.Client, error) {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     cfg.Redis.Host + ":" + cfg.Redis.Port,
+		Addr:     net.JoinHostPort(cfg.Redis.Host, cfg.Redis.Port),
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
-	if err = rdb.Ping(context.Background()).Err(); err != nil {
-		log.Error("failed to ping Redis", "error", err)
-		if err = rdb.Close(); err != nil {
-			log.Error("rdb.Close", "error", err)
+	if pingErr := rdb.Ping(context.Background()).Err(); pingErr != nil {
+		if closeErr := rdb.Close(); closeErr != nil {
+			log.Error("rdb.Close", "error", closeErr)
 		}
-		return err
+		return nil, fmt.Errorf("ping redis: %w", pingErr)
 	}
 	log.Info("redis connection established")
 
-	authService := auth.NewService(&cfg.JWT, dbpool)
-	userRepository := user.NewRepository(dbpool, rdb, log)
-	userService := user.NewService(userRepository, log, mail)
-	router := server.NewRouter(userService, authService, log, mail)
-	server := &http.Server{
+	return rdb, nil
+}
+
+func run() error {
+	log, cfg, mail, err := bootstrap()
+	if err != nil {
+		return err
+	}
+
+	dbpool, err := connectDB(cfg, log)
+	if err != nil {
+		return err
+	}
+
+	rdb, err := connectRedis(cfg, log)
+	if err != nil {
+		dbpool.Close()
+		return err
+	}
+
+	userRepository := user.NewRepository(dbpool)
+	userService := user.NewService(userRepository)
+
+	authRepository := auth.NewRefreshTokenRepository(dbpool)
+	authService := auth.NewService(&cfg.JWT, authRepository, userService)
+
+	categoryRepository := category.NewRepository(dbpool)
+	categoryService := category.NewService(categoryRepository)
+
+	tagRepository := tag.NewRepository(dbpool)
+	tagService := tag.NewService(tagRepository)
+
+	router := server.NewRouter(
+		userService,
+		authService,
+		categoryService,
+		tagService,
+		log,
+		mail,
+		cfg.App.Debug,
+		cfg.App.FrontendURL,
+		cfg.App.FrontendURL,
+	)
+	srv := &http.Server{
 		Addr:           ":" + cfg.Server.Port,
 		Handler:        router,
 		ReadTimeout:    cfg.Server.ReadTimeout,
@@ -103,10 +149,12 @@ func run() error {
 	}
 
 	go func() {
-		log.Info("Server starting", "address", server.Addr)
-		log.Info("Health check available", "url", fmt.Sprintf("http://localhost:%s/health", cfg.Server.Port))
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error("Server error", "error", err)
+		log.Info("Server starting", "address", srv.Addr)
+		log.Info("Health check available",
+			"url",
+			fmt.Sprintf("http://localhost:%s/health", cfg.Server.Port))
+		if srvErr := srv.ListenAndServe(); srvErr != nil && srvErr != http.ErrServerClosed {
+			log.Error("Server error", "error", srvErr)
 			os.Exit(1)
 		}
 	}()
@@ -121,13 +169,13 @@ func run() error {
 	log.Info("Received shutdown signal", "signal", sig)
 	log.Info("Shutting down server gracefully...")
 
-	if err := server.Shutdown(ctx); err != nil {
-		log.Error("Server forced to shutdown", "error", err)
-		return err
+	if shutdownErr := srv.Shutdown(ctx); shutdownErr != nil {
+		log.Error("Server forced to shutdown", "error", shutdownErr)
+		return shutdownErr
 	}
 	dbpool.Close()
-	if err := rdb.Close(); err != nil {
-		log.Error("rdb.Close", "error", err)
+	if closeErr := rdb.Close(); closeErr != nil {
+		log.Error("rdb.Close", "error", closeErr)
 	}
 
 	log.Info("Server exited gracefully")
