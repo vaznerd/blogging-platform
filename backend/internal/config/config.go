@@ -1,13 +1,13 @@
 package config
 
 import (
-	"fmt"
+	"errors"
 	"log/slog"
 	"os"
 	"strings"
 	"time"
 
-	_ "github.com/joho/godotenv/autoload"
+	_ "github.com/joho/godotenv/autoload" //nolint:blank-import // side-effect: loads .env file
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
@@ -29,6 +29,7 @@ type AppConfig struct {
 	Version     string `koanf:"version"`
 	Environment string `koanf:"environment"`
 	Debug       bool   `koanf:"debug"`
+	FrontendURL string `koanf:"frontend_url"`
 }
 
 type ServerConfig struct {
@@ -47,8 +48,8 @@ type LogConfig struct {
 }
 
 type DBConfig struct {
+	ContainerHost   string        `koanf:"container_host"`
 	Host            string        `koanf:"host"`
-	HostGo          string        `koanf:"host_go"`
 	Port            int           `koanf:"port"`
 	User            string        `koanf:"user"`
 	Password        string        `koanf:"password"`
@@ -61,14 +62,14 @@ type DBConfig struct {
 }
 
 type RedisConfig struct {
-	DB           int           `koanf:"db"`
-	Host         string        `koanf:"host"`
-	HostGo       string        `koanf:"host_go"`
-	Port         string        `koanf:"port"`
-	Password     string        `koanf:"password"`
-	DialTimeout  time.Duration `koanf:"dial_timeout"`
-	ReadTimeout  time.Duration `koanf:"read_timeout"`
-	WriteTimeout time.Duration `koanf:"write_timeout"`
+	DB            int           `koanf:"db"`
+	ContainerHost string        `koanf:"container_host"`
+	Host          string        `koanf:"host"`
+	Port          string        `koanf:"port"`
+	Password      string        `koanf:"password"`
+	DialTimeout   time.Duration `koanf:"dial_timeout"`
+	ReadTimeout   time.Duration `koanf:"read_timeout"`
+	WriteTimeout  time.Duration `koanf:"write_timeout"`
 }
 
 type JWTConfig struct {
@@ -88,12 +89,15 @@ func LoadConfig() (*Config, error) {
 	if err := k.Load(file.Provider("configs/config.yaml"), yaml.Parser()); err != nil {
 		return nil, err
 	}
-	k.Load(env.Provider("",
+	if err := k.Load(env.Provider(
+		"",
 		".",
 		func(s string) string {
 			return strings.ToLower(strings.ReplaceAll(s, "__", "."))
 		},
-	), nil)
+	), nil); err != nil {
+		return nil, err
+	}
 
 	if err := k.Unmarshal("", cfg); err != nil {
 		return nil, err
@@ -103,13 +107,13 @@ func LoadConfig() (*Config, error) {
 		cfg.Resend.APIKey = val
 	}
 	if cfg.Resend.APIKey == "" {
-		return cfg, fmt.Errorf("resend api key not found")
+		return nil, errors.New("resend api key not found")
 	}
 	if val := os.Getenv("JWT_SECRET"); val != "" {
 		cfg.JWT.Secret = val
 	}
 	if cfg.JWT.Secret == "" {
-		return cfg, fmt.Errorf("jwt secret not found")
+		return nil, errors.New("jwt secret not found")
 	}
 
 	return cfg, nil
@@ -117,11 +121,58 @@ func LoadConfig() (*Config, error) {
 
 func (c *Config) LogAllConfig(log *slog.Logger) {
 	log.Info("Loaded Configuration:")
-	log.Info("App", "Name", c.App.Name, "Version", c.App.Version, "Environment", c.App.Environment, "Debug", c.App.Debug)
-	log.Info("Server", "Port", c.Server.Port, "ReadTimeout", c.Server.ReadTimeout, "WriteTimeout", c.Server.WriteTimeout, "IdleTimeout", c.Server.IdleTimeout, "ShutdownTimeout", c.Server.ShutdownTimeout, "MaxHeaderBytes", c.Server.MaxHeaderBytes)
-	log.Info("Log", "Level", c.Log.Level, "Format", c.Log.Format, "AddSource", c.Log.AddSource)
-	log.Info("Database", "Host", c.DB.Host, "HostGo", c.DB.HostGo, "Port", c.DB.Port, "User", c.DB.User, "Password", "<redacted>", "Name", c.DB.Name, "MaxOpenConns", c.DB.MaxOpenConns, "MaxIdleConns", c.DB.MaxIdleConns, "ConnMaxLifetime", c.DB.ConnMaxLifetime, "ConnMaxIdleTime", c.DB.ConnMaxIdleTime, "SSLMode", c.DB.SSLMode)
-	log.Info("Redis", "DB", c.Redis.DB, "Host", c.Redis.Host, "HostGo", c.Redis.HostGo, "Port", c.Redis.Port, "Password", "<redacted>", "DialTimeout", c.Redis.DialTimeout, "ReadTimeout", c.Redis.ReadTimeout, "WriteTimeout", c.Redis.WriteTimeout)
+	log.Info(
+		"App",
+		"Name", c.App.Name,
+		"Version", c.App.Version,
+		"Environment", c.App.Environment,
+		"Debug", c.App.Debug,
+	)
+	log.Info(
+		"Server",
+		"Port", c.Server.Port,
+		"ReadTimeout", c.Server.ReadTimeout,
+		"WriteTimeout", c.Server.WriteTimeout,
+		"IdleTimeout", c.Server.IdleTimeout,
+		"ShutdownTimeout", c.Server.ShutdownTimeout,
+		"MaxHeaderBytes", c.Server.MaxHeaderBytes,
+	)
+	log.Info(
+		"Log",
+		"Level", c.Log.Level,
+		"Format", c.Log.Format,
+		"AddSource", c.Log.AddSource,
+	)
+	log.Info(
+		"Database",
+		"Host", c.DB.Host,
+		"ContainerHost", c.DB.ContainerHost,
+		"Port", c.DB.Port,
+		"User", c.DB.User,
+		"Password", "<redacted>",
+		"Name", c.DB.Name,
+		"MaxOpenConns", c.DB.MaxOpenConns,
+		"MaxIdleConns", c.DB.MaxIdleConns,
+		"ConnMaxLifetime", c.DB.ConnMaxLifetime,
+		"ConnMaxIdleTime", c.DB.ConnMaxIdleTime,
+		"SSLMode", c.DB.SSLMode,
+	)
+	log.Info(
+		"Redis",
+		"DB", c.Redis.DB,
+		"Host", c.Redis.Host,
+		"ContainerHost", c.Redis.ContainerHost,
+		"Port", c.Redis.Port,
+		"Password", "<redacted>",
+		"DialTimeout", c.Redis.DialTimeout,
+		"ReadTimeout", c.Redis.ReadTimeout,
+		"WriteTimeout", c.Redis.WriteTimeout,
+	)
 	log.Info("Resend", "APIKey", "<redacted>")
-	log.Info("JWT", "Secret", "<redacted>", "AccessTokenTTL", c.JWT.AccessTokenTTL, "RefreshTokenTTL", c.JWT.RefreshTokenTTL)
+	log.Info(
+		"JWT",
+		"Secret", "<redacted>",
+		"AccessTokenTTL", c.JWT.AccessTokenTTL,
+		"RefreshTokenTTL", c.JWT.RefreshTokenTTL,
+	)
 }

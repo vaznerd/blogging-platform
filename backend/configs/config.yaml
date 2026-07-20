@@ -3,6 +3,7 @@ app:
   version: "0.0.1"
   environment: "development"
   debug: true
+  frontend_url: "http://localhost:3000"
 
 server:
   port: "8080"
@@ -13,8 +14,8 @@ server:
   max_header_bytes: 1048576
 
 db:
-  host: "postgres"
-  host_go: "localhost"
+  host: "localhost"
+  container_host: "postgres"
   port: 5432
   user: "postgres"
   password: ""
@@ -27,8 +28,8 @@ db:
 
 redis:
   db: 0
-  host: "redis"
-  host_go: "localhost"
+  host: "localhost"
+  container_host: "redis"
   port: 6379
   password: "password"
   dial_timeout: 5s
