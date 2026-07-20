@@ -8,9 +8,9 @@ const (
 	CORSMaxAge = 300
 )
 
-func CorsMiddleware() Middleware {
+func CorsMiddleware(origin string) Middleware {
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedOrigins:   []string{origin},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		AllowCredentials: true,

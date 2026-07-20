@@ -34,7 +34,8 @@ func LoggingMiddleware(log *slog.Logger) Middleware {
 				level = slog.LevelInfo
 			}
 
-			log.Log(ctx, level, "http_request",
+			log.Log(
+				ctx, level, "http_request",
 				slog.String("req_id", reqID),
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
