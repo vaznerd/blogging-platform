@@ -1,21 +1,43 @@
 package user
 
 import (
-	"log/slog"
-
-	"github.com/resend/resend-go/v3"
+	"context"
 )
 
-type Service struct {
-	repo UserRepository
-	log  *slog.Logger
-	mail *resend.Client
+type Service interface {
+	Create(ctx context.Context, email, username, passwordHash string) (string, error)
+	GetByEmail(ctx context.Context, email string) (*User, error)
+	GetByID(ctx context.Context, userID string) (*User, error)
+	MarkEmailVerified(ctx context.Context, userID string) error
+	UpdatePassword(ctx context.Context, userID string, passwordHash string) error
 }
 
-func NewService(repo UserRepository, log *slog.Logger, mail *resend.Client) *Service {
-	return &Service{
+type service struct {
+	repo Repository
+}
+
+func NewService(repo Repository) Service {
+	return &service{
 		repo: repo,
-		log:  log,
-		mail: mail,
 	}
+}
+
+func (s *service) Create(ctx context.Context, email, username, passwordHash string) (string, error) {
+	return s.repo.CreateUser(ctx, email, username, passwordHash)
+}
+
+func (s *service) GetByEmail(ctx context.Context, email string) (*User, error) {
+	return s.repo.GetByEmail(ctx, email)
+}
+
+func (s *service) GetByID(ctx context.Context, userID string) (*User, error) {
+	return s.repo.GetByID(ctx, userID)
+}
+
+func (s *service) MarkEmailVerified(ctx context.Context, userID string) error {
+	return s.repo.MarkEmailVerified(ctx, userID)
+}
+
+func (s *service) UpdatePassword(ctx context.Context, userID string, passwordHash string) error {
+	return s.repo.UpdatePassword(ctx, userID, passwordHash)
 }

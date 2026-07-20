@@ -5,14 +5,21 @@ import (
 	"net/http"
 
 	"codeberg.org/vaznerd/blogging-platform/internal/middleware"
+	"codeberg.org/vaznerd/blogging-platform/internal/user"
 	"github.com/resend/resend-go/v3"
 )
 
-func RegisterRoutes(mux *http.ServeMux, service *Service, log *slog.Logger, mail *resend.Client) {
-	h := NewHandler(service, log, mail)
-	authMW := middleware.Auth(service.ValidateToken)
+func RegisterRoutes(
+	mux *http.ServeMux,
+	service *Service,
+	usr user.Service,
+	log *slog.Logger,
+	mail *resend.Client,
+	frontendURL string,
+) {
+	h := NewHandler(service, usr, log, mail, frontendURL)
+	authMW := middleware.Auth(service.ValidateToken, log)
 
-	// Public
 	mux.HandleFunc("POST "+RouteRegister, h.Register)
 	mux.HandleFunc("POST "+RouteLogin, h.Login)
 	mux.HandleFunc("POST "+RouteRefresh, h.Refresh)
@@ -21,7 +28,5 @@ func RegisterRoutes(mux *http.ServeMux, service *Service, log *slog.Logger, mail
 	mux.HandleFunc("POST "+RouteForgotPassword, h.ForgotPassword)
 	mux.HandleFunc("POST "+RouteResetPassword, h.ResetPassword)
 
-	// Protected
 	mux.Handle("POST "+RouteLogout, authMW(http.HandlerFunc(h.Logout)))
-	mux.Handle("GET "+RouteMe, authMW(http.HandlerFunc(h.Me)))
 }

@@ -1,7 +1,6 @@
 package user
 
 const (
-	RouteGetUser  = "/api/v1/users/{username}"
-	RouteUpdateMe = "/api/v1/users/me"
-	RouteDeleteMe = "/api/v1/users/me"
+	RouteMe      = "/api/v1/users/me"
+	RouteGetUser = "/api/v1/users/{username}"
 )
