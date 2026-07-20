@@ -16,6 +16,7 @@ A multi-user blogging platform where users write posts in Markdown and publish t
 - Posts are rendered to HTML on publish
 - Comments on posts
 - Tagging system for posts
+- Category system for posts (many-to-many)
 - Role-based access control (guest, user, admin)
 - Redis caching layer
 - PostgreSQL database with versioned migrations
@@ -218,7 +219,6 @@ Base path: `/api/v1`
 | POST | `/api/v1/auth/login` | No | Login, returns tokens |
 | POST | `/api/v1/auth/logout` | Yes | Revoke refresh token |
 | POST | `/api/v1/auth/refresh` | No | Rotate refresh token |
-| GET | `/api/v1/auth/me` | Yes | Get current user |
 | POST | `/api/v1/auth/verify-email` | No | Verify email with token |
 | POST | `/api/v1/auth/resend-verification` | No | Resend verification email |
 | POST | `/api/v1/auth/forgot-password` | No | Request password reset |
@@ -228,6 +228,7 @@ Base path: `/api/v1`
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
+| GET | `/api/v1/users/me` | Yes | Get own profile |
 | GET | `/api/v1/users/{username}` | No | Get user profile |
 | PATCH | `/api/v1/users/me` | Yes | Update own profile |
 | DELETE | `/api/v1/users/me` | Yes | Delete own account |
@@ -257,14 +258,45 @@ Base path: `/api/v1`
 |--------|------|------|-------------|
 | GET | `/api/v1/tags` | No | List all tags |
 | GET | `/api/v1/tags/{name}` | No | Get posts by tag |
+| POST | `/api/v1/tags` | Yes | Create tag |
+| DELETE | `/api/v1/tags/{name}` | Yes | Delete tag |
+| POST | `/api/v1/tags/post` | Yes | Attach tag to post |
+| DELETE | `/api/v1/tags/post` | Yes | Detach tag from post |
+
+### Categories
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/v1/categories` | No | List all categories |
+| GET | `/api/v1/categories/{slug}` | No | Get category by slug |
+| POST | `/api/v1/categories` | Yes | Create category |
+| PUT | `/api/v1/categories/{slug}` | Yes | Update category |
+| DELETE | `/api/v1/categories/{slug}` | Yes | Delete category |
+| POST | `/api/v1/categories/post` | Yes | Attach category to post |
+| DELETE | `/api/v1/categories/post` | Yes | Detach category from post |
 
 ### Pagination
 
 Listing endpoints support query parameters:
 
 ```text
-?page=1&limit=20
+?limit=20&offset=0
 ```
+
+### Implementation Status
+
+| Domain | Status |
+|--------|--------|
+| Auth | All endpoints implemented |
+| User — Repo methods | CreateUser, GetByEmail, GetByID, MarkEmailVerified, UpdatePassword done |
+| User — Me handler | Implemented |
+| User — GetUser, UpdateMe, DeleteMe | Stubs (501) |
+| Category — repository + service | Implemented |
+| Category — handlers | Stubs (501) |
+| Tag — repository + service | Implemented |
+| Tag — handlers | Stubs (501) |
+| Post | Scaffold only (errors + routes) |
+| Comment | Scaffold only (errors + routes) |
 
 ---
 
@@ -287,12 +319,15 @@ created_at      TIMESTAMPTZ
 updated_at      TIMESTAMPTZ
 ```
 
-**refresh_tokens** — JWT refresh token storage
+**sessions** — JWT refresh token sessions
 ```sql
-id              UUID PRIMARY KEY
+session_id      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY
 user_id         UUID REFERENCES users(id) ON DELETE CASCADE
-token_hash      VARCHAR(255) NOT NULL
+refresh_token_hash BYTEA UNIQUE NOT NULL
+user_agent      TEXT DEFAULT ''
+ip_address      INET
 expires_at      TIMESTAMPTZ
+last_used_at    TIMESTAMPTZ
 revoked_at      TIMESTAMPTZ
 created_at      TIMESTAMPTZ
 ```
@@ -333,6 +368,41 @@ name            VARCHAR(255) UNIQUE NOT NULL
 post_id         UUID REFERENCES posts(id) ON DELETE CASCADE
 tag_id          UUID REFERENCES tags(id) ON DELETE CASCADE
 PRIMARY KEY (post_id, tag_id)
+```
+
+**categories** — post categories
+```sql
+id              UUID PRIMARY KEY
+name            VARCHAR(255) NOT NULL
+slug            VARCHAR(255) UNIQUE NOT NULL
+description     TEXT DEFAULT ''
+created_at      TIMESTAMPTZ
+updated_at      TIMESTAMPTZ
+```
+
+**post_categories** — many-to-many junction
+```sql
+post_id         UUID REFERENCES posts(id) ON DELETE CASCADE
+category_id     UUID REFERENCES categories(id) ON DELETE CASCADE
+PRIMARY KEY (post_id, category_id)
+```
+
+**email_verification_tokens** — email verification
+```sql
+id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY
+user_id         UUID REFERENCES users(id) ON DELETE CASCADE
+token_hash      BYTEA UNIQUE NOT NULL
+expires_at      TIMESTAMPTZ
+created_at      TIMESTAMPTZ
+```
+
+**password_reset_tokens** — password reset
+```sql
+id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY
+user_id         UUID REFERENCES users(id) ON DELETE CASCADE
+token_hash      BYTEA UNIQUE NOT NULL
+expires_at      TIMESTAMPTZ
+created_at      TIMESTAMPTZ
 ```
 
 ### Migrations
@@ -412,9 +482,16 @@ All configuration is loaded from `backend/configs/config.yaml` with environment 
     │       └── main.go           # Entrypoint
     ├── configs/
     │   └── config.yaml           # Default config
-    ├── migrations/               # SQL migrations (12 files)
+    ├── migrations/               # SQL migrations (9 versions)
     └── internal/
         ├── auth/                 # Authentication
+        │   ├── errors.go
+        │   ├── handler.go
+        │   ├── repository.go
+        │   ├── routes.go
+        │   ├── router.go
+        │   └── service.go
+        ├── category/             # Categories
         │   ├── errors.go
         │   ├── handler.go
         │   ├── repository.go
@@ -436,7 +513,13 @@ All configuration is loaded from `backend/configs/config.yaml` with environment 
         │   └── routes.go
         ├── tag/                  # Tags
         │   ├── errors.go
-        │   └── routes.go
+        │   ├── handler.go
+        │   ├── repository.go
+        │   ├── routes.go
+        │   ├── router.go
+        │   └── service.go
+        ├── db/                   # Database utilities
+        │   └── db.go
         ├── config/               # Configuration
         │   ├── config.go
         │   └── validator.go

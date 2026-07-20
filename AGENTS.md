@@ -13,13 +13,21 @@ A multi-user blogging platform where users write posts in Markdown and publish t
 - **Go 1.26+** — check with `go version`
 - **stdlib `net/http`** — HTTP server and routing (Go 1.22+ method-based patterns)
 - **pgx/v5** — PostgreSQL driver
-- **Redis (go-redis/v9)** — caching layer
-- **golang-jwt/jwt/v5** — JWT authentication
+- **Redis (go-redis/v9)** — caching layer (connected but not yet used in business logic)
+- **golang-jwt/jwt/v5** — JWT authentication (HS256)
 - **golang-migrate/migrate** — database migrations
+- **Resend (resend-go/v3)** — transactional email
 - **Air** — hot-reload development
 - **golangci-lint** — code quality
-- **koanf** — configuration management
+- **koanf** — configuration management (YAML + env overrides)
 - **slog** — structured logging
+- **bcrypt** — password hashing (`golang.org/x/crypto`)
+
+### Module
+
+```
+module codeberg.org/vaznerd/blogging-platform
+```
 
 ### Documentation
 
@@ -40,12 +48,12 @@ Handler (HTTP) → Service (Business Logic) → Repository (Database)
 
 ```
 internal/<domain>/
-├── errors.go        # Sentinel errors (ErrNotFound, ErrForbidden, etc.)
-├── routes.go        # Path constants (RouteXxx = "/api/v1/...")
-├── router.go        # RegisterRoutes(mux, service, log, mail)
-├── handler.go       # HTTP handlers
-├── service.go       # Business logic
-└── repository.go    # Database access (pgx)
+├── errors.go           # Sentinel errors (ErrNotFound, ErrForbidden, etc.)
+├── routes.go           # Path constants (RouteXxx = "/api/v1/...")
+├── router.go           # RegisterRoutes(mux, service, log, mail, authMW)
+├── handler.go          # HTTP handlers
+├── service.go          # Business logic
+└── repository.go       # Repository interface + concrete pgx implementation
 ```
 
 **Key Rules**:
@@ -65,7 +73,6 @@ package auth
 const (
     RouteRegister = "/api/v1/auth/register"
     RouteLogin    = "/api/v1/auth/login"
-    // ...
 )
 ```
 
@@ -77,6 +84,19 @@ mux.HandleFunc("POST "+RouteRegister, h.Register)
 
 ---
 
+## Implementation Status
+
+| Domain | errors | routes | router | handler | service | repo | Status |
+|--------|--------|--------|--------|---------|---------|------|--------|
+| auth | done | done | done | done | done | done | **FULLY IMPLEMENTED** |
+| user | done | done | done | done | done | done | **PARTIAL** — `Me` works; `GetUser`, `UpdateMe`, `DeleteMe` are stubs returning 501 |
+| category | done | done | done | stub | done | done | **HANDLERS STUB** — repo+service done |
+| tag | done | done | done | stub | done | done | **HANDLERS STUB** — repo+service done |
+| post | done | done | — | — | — | — | **SCAFFOLD ONLY** — just errors + routes |
+| comment | done | done | — | — | — | — | **SCAFFOLD ONLY** — just errors + routes |
+
+---
+
 ## Development Workflow
 
 ### Available Commands
@@ -84,13 +104,14 @@ mux.HandleFunc("POST "+RouteRegister, h.Register)
 ```bash
 make dev-up            # Start dev containers (postgres, redis)
 make run-backend       # Start Go API server with Air hot reload
-make lint-backend      # Run golangci-lint
+make lint-backend      # Run go vet
 make format-backend    # Format code with gofumpt
 make dev-down          # Stop dev containers
 make dev-down-force    # Stop and remove volumes
 make dev-logs          # View container logs
 make dev-migrate-up    # Apply pending migrations
 make dev-migrate-down  # Rollback last migration
+make dev-migrate-version # Show current migration version
 ```
 
 ### Pre-Commit Checklist
@@ -120,41 +141,40 @@ go build ./...
 ### Adding a New Handler Method
 
 ```go
-// handler.go
 func (h *Handler) CreateWidget(w http.ResponseWriter, r *http.Request) {
-    // 1. Parse request body
-    // 2. Call service
-    // 3. Write response
+    // ...
 }
 ```
 
 ```go
-// router.go
 mux.HandleFunc("POST "+RouteWidgets, h.CreateWidget)
 ```
 
 If protected, wrap with auth middleware:
 
 ```go
-authMW := middleware.Auth(authService.ValidateToken)
+authMW := middleware.Auth(authService.ValidateToken, log)
 mux.Handle("POST "+RouteWidgets, authMW(http.HandlerFunc(h.CreateWidget)))
 ```
 
 ### Database Migrations
 
-Migrations use golang-migrate with timestamped filenames:
+Migrations use golang-migrate with sequential numbering:
 
 ```bash
 make dev-migrate-up        # Apply pending
 make dev-migrate-down      # Rollback last
+make dev-migrate-version   # Show current version
 ```
 
 Migration files live in `backend/migrations/`:
 
 ```
-{YYYYMMDDHHMMSS}_{description}.up.sql
-{YYYYMMDDHHMMSS}_{description}.down.sql
+{NNN}_{description}.up.sql
+{NNN}_{description}.down.sql
 ```
+
+Current migrations: 001–009 (users, sessions, posts, comments, tags, post_tags, categories, email_verification, password_reset_tokens).
 
 Best practices:
 - Wrap in `BEGIN;` / `COMMIT;`
@@ -165,6 +185,38 @@ Best practices:
 ---
 
 ## Authentication & Authorization
+
+### Session Management
+
+The auth domain uses a hybrid JWT + database sessions approach:
+
+- **Access tokens** — pure JWT (HS256), validated by signature only (no DB lookup). Contains `sub`, `role`, `exp`, `iat`.
+- **Refresh tokens** — JWT signed, SHA-256 hashed and stored in the `sessions` table. Contains `sub`, `type:"refresh"`, `exp`, `iat`.
+- **Session validation** — hash the refresh token, look up in DB, check `revoked_at` and `expires_at`.
+- **Email verification** — `email_verification_tokens` table, 24h expiry, SHA-256 hashed tokens.
+- **Password reset** — `password_reset_tokens` table, 1h expiry, SHA-256 hashed tokens.
+
+Token defaults: access = 15m, refresh = 168h (7 days). Configurable in `config.yaml`.
+
+```go
+hash := auth.HashRefreshToken(refreshToken)
+
+err := authService.CreateSession(ctx, userID, hash, userAgent, ipAddress)
+
+session, err := authService.GetSessionByRefreshTokenHash(ctx, hash)
+```
+
+### Token Flow
+
+1. **Register:** create user → generate access+refresh → SHA-256 hash refresh → store session → send verification email (goroutine)
+2. **Login:** find user by email → bcrypt compare → generate tokens → store session
+3. **Refresh:** parse refresh token → hash → lookup session → check not revoked/expired → generate new tokens → create session → revoke old
+4. **Logout:** auth middleware (access token) → parse refresh body → hash → lookup → verify ownership → revoke
+5. **Verify email:** parse token → hash → lookup → check expiry → mark user verified → delete tokens
+6. **Forgot password:** parse email → find user → generate token → store → email reset link (goroutine)
+7. **Reset password:** parse token+password → hash → lookup → delete tokens → hash new password → update user → revoke all sessions
+
+**Note:** Login has timing-attack mitigation — on user-not-found, it still calls `ComparePassword` against a dummy hash.
 
 ### Context Helpers
 
@@ -178,13 +230,11 @@ role, ok := middleware.GetUserRole(r)
 ### Protecting Routes
 
 ```go
-authMW := middleware.Auth(authService.ValidateToken)
+authMW := middleware.Auth(authService.ValidateToken, log)
 
-// Public
-mux.HandleFunc("GET /api/v1/posts", h.ListPosts)
+mux.HandleFunc("GET /api/v1/posts", h.ListPosts)  // public
 
-// Protected
-mux.Handle("POST /api/v1/posts", authMW(http.HandlerFunc(h.CreatePost)))
+mux.Handle("POST /api/v1/posts", authMW(http.HandlerFunc(h.CreatePost)))  // protected
 ```
 
 ### Ownership Checks (in Service Layer)
@@ -198,9 +248,21 @@ func (s *Service) UpdatePost(ctx context.Context, postID, userID string) error {
     if post.AuthorID != userID {
         return ErrForbidden
     }
-    // ...
+    return nil
 }
 ```
+
+---
+
+## Middleware Stack
+
+Applied in `internal/server/router.go`, outermost to innermost:
+
+1. **RecoveryMiddleware** — panic recovery, logs stack trace, returns 500
+2. **LoggingMiddleware** — UUID request ID, status-based log levels (Info/Warn/Error), injects `X-Request-ID` header
+3. **CorsMiddleware** — configurable origin, credentials, max-age 300s (wraps `go-chi/cors`)
+
+Auth middleware is applied per-route, not globally.
 
 ---
 
@@ -233,12 +295,25 @@ if errors.Is(err, domain.ErrForbidden) {
 
 ---
 
+## Configuration
+
+Uses `koanf` with YAML file + env overrides:
+
+- Config file: `backend/configs/config.yaml`
+- Env overrides: `DB__HOST`, `DB__PORT`, etc. (`__` separator)
+- Secrets from env only: `JWT_SECRET`, `RESEND_API` (never in YAML)
+- `.env` file auto-loaded by `godotenv/autoload`
+- Validation in `config.go` includes production-specific checks (debug must be false, DB password required, SSL mode cannot be "disable")
+
+---
+
 ## Testing
 
 - Use Go's standard `testing` package
 - Table-driven tests preferred
 - Repository tests use a test PostgreSQL instance
 - Handler tests use `httptest.NewRecorder()` + `httptest.NewRequest()`
+- No tests exist yet — 8 test suites tracked in `TODO.md`
 
 ```bash
 go test ./...
@@ -248,16 +323,19 @@ go test ./...
 
 ## Best Practices for AI Assistants
 
-1. **No framework** — use `http.ServeMux` with `"METHOD /path"` patterns, never import `gin`, `chi`, or `echo`
+1. **No framework** — use `http.ServeMux` with `"METHOD /path"` patterns
 2. **pgx, not GORM** — use `pgx/v5` for all database access, never import GORM
-3. **Reference existing code** — check `internal/auth/` and `internal/user/` for patterns before creating new domains
+3. **Reference existing code** — check `internal/auth/` for full patterns; `internal/category/` and `internal/tag/` follow the same single-file pattern with stub handlers
 4. **Follow layered architecture** — never skip Handler → Service → Repository
 5. **Route constants** — always define paths in `routes.go`, never hardcode in `router.go`
-6. **Minimal comments** — write self-documenting code, comment WHY not WHAT
+6. **No comments** — write self-documenting code, never add comments unless explaining non-obvious WHY
 7. **Error handling** — use sentinel errors, map in handlers with `errors.Is()`
 8. **JWT auth** — Bearer token in `Authorization` header, validate via `auth.Service`
 9. **Configuration** — use koanf (YAML + env overrides), never hardcode secrets
 10. **Logging** — use `slog` with structured attributes, never `log.Printf`
 11. **Check Makefile** — all development commands in `make help`
 12. **No ORM** — write raw SQL with pgx, never use an ORM
-13. **Don't write code unless explicitly asked** — explain how to do things, don't create files or write code unless the user explicitly says "create it" or "write it"
+13. **Reference url-shortener** — always read `../url-shortener` (at `/home/piyush/Projects/url-shortner`) when creating new features to check how similar features were implemented there; it uses the same tech stack (Go, pgx, Redis, resend) with a flat package structure
+14. **Don't write code unless explicitly asked** — explain how to do things, don't create files or write code unless the user explicitly says "create it" or "write it"
+15. **TODO cleanup** — when a task is completed, remove the line from `TODO.md` entirely; never mark with `[x]`
+16. **Build artifacts** — `backend/build/` contains a compiled binary that shouldn't be in git; check `.gitignore`
