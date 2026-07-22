@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func RegisterRoutes(mux *http.ServeMux, service *Service, log *slog.Logger, authMW func(http.Handler) http.Handler) {
+func RegisterRoutes(mux *http.ServeMux, service Service, log *slog.Logger, authMW func(http.Handler) http.Handler) {
 	h := NewHandler(service, log)
 
 	mux.HandleFunc("GET "+RouteCategories, h.ListCategories)
