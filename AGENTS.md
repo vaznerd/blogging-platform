@@ -90,8 +90,8 @@ mux.HandleFunc("POST "+RouteRegister, h.Register)
 |--------|--------|--------|--------|---------|---------|------|--------|
 | auth | done | done | done | done | done | done | **FULLY IMPLEMENTED** |
 | user | done | done | done | done | done | done | **PARTIAL** — `Me` works; `GetUser`, `UpdateMe`, `DeleteMe` are stubs returning 501 |
-| category | done | done | done | stub | done | done | **HANDLERS STUB** — repo+service done |
-| tag | done | done | done | stub | done | done | **HANDLERS STUB** — repo+service done |
+| category | done | done | done | stub | done | done | **HANDLERS STUB** — repo+service done, service is an interface |
+| tag | done | done | done | stub | done | done | **HANDLERS STUB** — repo+service done, service is an interface |
 | post | done | done | — | — | — | — | **SCAFFOLD ONLY** — just errors + routes |
 | comment | done | done | — | — | — | — | **SCAFFOLD ONLY** — just errors + routes |
 
@@ -304,6 +304,7 @@ Uses `koanf` with YAML file + env overrides:
 - Secrets from env only: `JWT_SECRET`, `RESEND_API` (never in YAML)
 - `.env` file auto-loaded by `godotenv/autoload`
 - Validation in `config.go` includes production-specific checks (debug must be false, DB password required, SSL mode cannot be "disable")
+- Trusted proxies: `server.trusted_proxies` in YAML accepts CIDR notation (`10.0.0.0/8`) or single IPs (`127.0.0.1`). Used by `auth.Handler.extractIP` to walk `X-Forwarded-For` right-to-left.
 
 ---
 
@@ -325,7 +326,7 @@ go test ./...
 
 1. **No framework** — use `http.ServeMux` with `"METHOD /path"` patterns
 2. **pgx, not GORM** — use `pgx/v5` for all database access, never import GORM
-3. **Reference existing code** — check `internal/auth/` for full patterns; `internal/category/` and `internal/tag/` follow the same single-file pattern with stub handlers
+3. **Reference existing code** — check `internal/auth/` for full patterns; `internal/category/` and `internal/tag/` follow the same single-file pattern with stub handlers and service interfaces
 4. **Follow layered architecture** — never skip Handler → Service → Repository
 5. **Route constants** — always define paths in `routes.go`, never hardcode in `router.go`
 6. **No comments** — write self-documenting code, never add comments unless explaining non-obvious WHY

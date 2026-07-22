@@ -33,3 +33,4 @@
 - [ ] Run gofumpt on all files
 - [ ] Remove `backend/build/` from git tracking
 - [ ] Verify `.gitignore` excludes `backend/build/`
+- [ ] Add rate limiting middleware to auth endpoints (login, register, forgot-password, reset-password, resend-verification)
