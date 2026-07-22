@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
 	"codeberg.org/vaznerd/blogging-platform/internal/auth"
 	"codeberg.org/vaznerd/blogging-platform/internal/category"
@@ -157,6 +158,19 @@ func run() error {
 		if srvErr := srv.ListenAndServe(); srvErr != nil && srvErr != http.ErrServerClosed {
 			log.Error("Server error", "error", srvErr)
 			os.Exit(1)
+		}
+	}()
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			rows, err := authService.DeleteExpiredSessions(context.Background())
+			if err != nil {
+				log.Error("failed to cleanup expired sessions", "error", err)
+			} else if rows > 0 {
+				log.Info("cleaned up expired sessions", "rows_deleted", rows)
+			}
 		}
 	}()
 
