@@ -16,8 +16,9 @@ func RegisterRoutes(
 	log *slog.Logger,
 	mail *resend.Client,
 	frontendURL string,
+	trustedProxies []string,
 ) {
-	h := NewHandler(service, usr, log, mail, frontendURL)
+	h := NewHandler(service, usr, log, mail, frontendURL, trustedProxies)
 	authMW := middleware.Auth(service.ValidateToken, log)
 
 	mux.HandleFunc("POST "+RouteRegister, h.Register)

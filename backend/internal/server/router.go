@@ -16,18 +16,19 @@ import (
 func NewRouter(
 	userService user.Service,
 	authService *auth.Service,
-	categoryService *category.Service,
-	tagService *tag.Service,
+	categoryService category.Service,
+	tagService tag.Service,
 	log *slog.Logger,
 	mail *resend.Client,
 	debug bool,
 	corsOrigin string,
 	frontendURL string,
+	trustedProxies []string,
 ) http.Handler {
 	mux := http.NewServeMux()
 	authMW := middleware.Auth(authService.ValidateToken, log)
 
-	auth.RegisterRoutes(mux, authService, userService, log, mail, frontendURL)
+	auth.RegisterRoutes(mux, authService, userService, log, mail, frontendURL, trustedProxies)
 	user.RegisterRoutes(mux, userService, log, authMW)
 	category.RegisterRoutes(mux, categoryService, log, authMW)
 	tag.RegisterRoutes(mux, tagService, log, authMW)

@@ -138,6 +138,7 @@ func run() error {
 		cfg.App.Debug,
 		cfg.App.FrontendURL,
 		cfg.App.FrontendURL,
+		cfg.Server.TrustedProxies,
 	)
 	srv := &http.Server{
 		Addr:           ":" + cfg.Server.Port,

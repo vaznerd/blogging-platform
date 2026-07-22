@@ -8,7 +8,9 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/netip"
 	"regexp"
+	"slices"
 	"strings"
 
 	"codeberg.org/vaznerd/blogging-platform/internal/middleware"
@@ -17,11 +19,12 @@ import (
 )
 
 type Handler struct {
-	service     *Service
-	user        user.Service
-	log         *slog.Logger
-	mail        *resend.Client
-	frontendURL string
+	service        *Service
+	user           user.Service
+	log            *slog.Logger
+	mail           *resend.Client
+	frontendURL    string
+	trustedProxies []netip.Prefix
 }
 
 type errorResponse struct {
@@ -59,26 +62,84 @@ type resetPasswordRequest struct {
 
 func NewHandler(
 	service *Service,
-	user user.Service,
+	usr user.Service,
 	log *slog.Logger,
 	mail *resend.Client,
 	frontendURL string,
+	trustedProxies []string,
 ) *Handler {
+	prefixes := make([]netip.Prefix, 0, len(trustedProxies))
+	for _, raw := range trustedProxies {
+		prefix, err := netip.ParsePrefix(raw)
+		if err != nil {
+			addr, err2 := netip.ParseAddr(raw)
+			if err2 != nil {
+				log.Warn("invalid trusted proxy, skipping", "value", raw, "error", err)
+				continue
+			}
+			bits := addr.BitLen()
+			prefix = netip.PrefixFrom(addr, bits)
+		}
+		prefixes = append(prefixes, prefix)
+	}
 	return &Handler{
-		service:     service,
-		user:        user,
-		log:         log,
-		mail:        mail,
-		frontendURL: frontendURL,
+		service:        service,
+		user:           usr,
+		log:            log,
+		mail:           mail,
+		frontendURL:    frontendURL,
+		trustedProxies: prefixes,
 	}
 }
 
-func extractIP(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
+func (h *Handler) isTrustedProxy(addr netip.Addr) bool {
+	for _, prefix := range h.trustedProxies {
+		if prefix.Contains(addr) {
+			return true
+		}
 	}
-	return host
+	return false
+}
+
+func (h *Handler) extractIP(r *http.Request) string {
+	peer, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		peer = r.RemoteAddr
+	}
+
+	peerAddr, err := netip.ParseAddr(peer)
+	if err != nil {
+		return peer
+	}
+
+	if !h.isTrustedProxy(peerAddr) {
+		return peerAddr.String()
+	}
+
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		for _, raw := range slices.Backward(parts) {
+			raw = strings.TrimSpace(raw)
+			if raw == "" {
+				continue
+			}
+			addr, parseErr := netip.ParseAddr(raw)
+			if parseErr != nil {
+				continue
+			}
+			if !h.isTrustedProxy(addr) {
+				return addr.String()
+			}
+		}
+	}
+
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		if addr, parseErr := netip.ParseAddr(strings.TrimSpace(xri)); parseErr == nil {
+			return addr.String()
+		}
+	}
+
+	return peerAddr.String()
 }
 
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
@@ -278,7 +339,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hash := HashRefreshToken(refreshToken)
-	if sessErr := h.service.CreateSession(r.Context(), userID, hash, r.UserAgent(), extractIP(r)); sessErr != nil {
+	if sessErr := h.service.CreateSession(r.Context(), userID, hash, r.UserAgent(), h.extractIP(r)); sessErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		h.log.ErrorContext(r.Context(), "failed to create session", "error", sessErr)
 		_ = json.NewEncoder(w).Encode(errorResponse{Error: ErrInternalServerMsg})
@@ -341,7 +402,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hash := HashRefreshToken(refreshToken)
-	if sessErr := h.service.CreateSession(r.Context(), u.ID, hash, r.UserAgent(), extractIP(r)); sessErr != nil {
+	if sessErr := h.service.CreateSession(r.Context(), u.ID, hash, r.UserAgent(), h.extractIP(r)); sessErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		h.log.ErrorContext(r.Context(), "failed to create session", "error", sessErr)
 		_ = json.NewEncoder(w).Encode(errorResponse{Error: ErrInternalServerMsg})
@@ -452,7 +513,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newHash := HashRefreshToken(newRefreshToken)
-	if sessErr := h.service.CreateSession(r.Context(), u.ID, newHash, r.UserAgent(), extractIP(r)); sessErr != nil {
+	if sessErr := h.service.CreateSession(r.Context(), u.ID, newHash, r.UserAgent(), h.extractIP(r)); sessErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		h.log.ErrorContext(r.Context(), "failed to create new session", "error", sessErr)
 		_ = json.NewEncoder(w).Encode(errorResponse{Error: ErrInternalServerMsg})

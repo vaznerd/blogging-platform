@@ -39,6 +39,7 @@ type ServerConfig struct {
 	IdleTimeout     time.Duration `koanf:"idle_timeout"`
 	ShutdownTimeout time.Duration `koanf:"shutdown_timeout"`
 	MaxHeaderBytes  int           `koanf:"max_header_bytes"`
+	TrustedProxies  []string      `koanf:"trusted_proxies"`
 }
 
 type LogConfig struct {
