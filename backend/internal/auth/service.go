@@ -134,12 +134,12 @@ func (s *Service) GetSessionByRefreshTokenHash(ctx context.Context, hash []byte)
 	return session, nil
 }
 
-func (s *Service) UpdateSessionLastUsed(ctx context.Context, sessionID int64) error {
-	return s.refreshTokenRepo.UpdateLastUsedAt(ctx, sessionID)
+func (s *Service) UpdateSessionLastUsed(ctx context.Context, id string) error {
+	return s.refreshTokenRepo.UpdateLastUsedAt(ctx, id)
 }
 
-func (s *Service) RevokeSession(ctx context.Context, sessionID int64) error {
-	return s.refreshTokenRepo.RevokeSession(ctx, sessionID)
+func (s *Service) RevokeSession(ctx context.Context, id string) error {
+	return s.refreshTokenRepo.RevokeSession(ctx, id)
 }
 
 func (s *Service) RevokeAllUserSessions(ctx context.Context, userID string) error {

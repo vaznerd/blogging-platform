@@ -10,7 +10,7 @@ import (
 )
 
 type Session struct {
-	SessionID        int64
+	ID               string
 	UserID           string
 	RefreshTokenHash []byte
 	UserAgent        string
@@ -22,7 +22,7 @@ type Session struct {
 }
 
 type VerificationToken struct {
-	ID        int64
+	ID        string
 	UserID    string
 	TokenHash []byte
 	ExpiresAt time.Time
@@ -30,7 +30,7 @@ type VerificationToken struct {
 }
 
 type PasswordResetToken struct {
-	ID        int64
+	ID        string
 	UserID    string
 	TokenHash []byte
 	ExpiresAt time.Time
@@ -47,8 +47,8 @@ type RefreshTokenRepository interface {
 		expiresAt time.Time,
 	) error
 	GetSessionByRefreshTokenHash(ctx context.Context, hash []byte) (*Session, error)
-	UpdateLastUsedAt(ctx context.Context, sessionID int64) error
-	RevokeSession(ctx context.Context, sessionID int64) error
+	UpdateLastUsedAt(ctx context.Context, id string) error
+	RevokeSession(ctx context.Context, id string) error
 	RevokeAllUserSessions(ctx context.Context, userID string) error
 	DeleteExpiredSessions(ctx context.Context) (int64, error)
 
@@ -102,7 +102,7 @@ func (r *refreshTokenRepository) GetSessionByRefreshTokenHash(
 	err := r.db.QueryRow(
 		ctx,
 		`SELECT
-			session_id,
+			id,
 			user_id,
 			refresh_token_hash,
 			user_agent,
@@ -115,7 +115,7 @@ func (r *refreshTokenRepository) GetSessionByRefreshTokenHash(
 		 WHERE refresh_token_hash = $1`,
 		hash,
 	).Scan(
-		&s.SessionID, &s.UserID, &s.RefreshTokenHash, &s.UserAgent,
+		&s.ID, &s.UserID, &s.RefreshTokenHash, &s.UserAgent,
 		&s.IPAddress, &s.ExpiresAt, &s.LastUsedAt, &s.RevokedAt, &s.CreatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -129,26 +129,26 @@ func (r *refreshTokenRepository) GetSessionByRefreshTokenHash(
 
 func (r *refreshTokenRepository) UpdateLastUsedAt(
 	ctx context.Context,
-	sessionID int64,
+	id string,
 ) error {
 	_, err := r.db.Exec(
 		ctx,
-		`UPDATE sessions SET last_used_at = NOW() WHERE session_id = $1`,
-		sessionID,
+		`UPDATE sessions SET last_used_at = NOW() WHERE id = $1`,
+		id,
 	)
 	return err
 }
 
 func (r *refreshTokenRepository) RevokeSession(
 	ctx context.Context,
-	sessionID int64,
+	id string,
 ) error {
 	_, err := r.db.Exec(
 		ctx,
 		`UPDATE sessions
 		SET revoked_at = NOW()
-		WHERE session_id = $1`,
-		sessionID,
+		WHERE id = $1`,
+		id,
 	)
 	return err
 }

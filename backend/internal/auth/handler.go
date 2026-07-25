@@ -450,7 +450,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if revokeErr := h.service.RevokeSession(r.Context(), session.SessionID); revokeErr != nil {
+	if revokeErr := h.service.RevokeSession(r.Context(), session.ID); revokeErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		h.log.ErrorContext(r.Context(), "failed to revoke session", "error", revokeErr)
 		_ = json.NewEncoder(w).Encode(errorResponse{Error: ErrInternalServerMsg})
@@ -484,7 +484,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	u, err := h.user.GetByID(r.Context(), session.UserID)
 	if errors.Is(err, user.ErrNotFound) {
-		_ = h.service.RevokeSession(r.Context(), session.SessionID)
+		_ = h.service.RevokeSession(r.Context(), session.ID)
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(errorResponse{Error: "invalid or expired refresh token"})
 		return
@@ -520,7 +520,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if revokeErr := h.service.RevokeSession(r.Context(), session.SessionID); revokeErr != nil {
+	if revokeErr := h.service.RevokeSession(r.Context(), session.ID); revokeErr != nil {
 		h.log.ErrorContext(r.Context(), "failed to revoke old session during refresh", "error", revokeErr)
 	}
 
