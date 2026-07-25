@@ -8,5 +8,6 @@ const (
 	RouteVerifyEmail        = "/api/v1/auth/verify-email"
 	RouteResendVerification = "/api/v1/auth/resend-verification"
 	RouteForgotPassword     = "/api/v1/auth/forgot-password"
-	RouteResetPassword      = "/api/v1/auth/reset-password" 
+	RouteResetPassword      = "/api/v1/auth/reset-password"
+	RouteChangePassword     = "/api/v1/auth/change-password"
 )
