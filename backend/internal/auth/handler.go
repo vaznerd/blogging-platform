@@ -346,10 +346,10 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go h.sendVerificationEmail(context.Background(), userID, email) //nolint:gosec // fire-and-forget async email
+	go h.sendVerificationEmail(context.Background(), userID, email)
 
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(tokenResponse{ //nolint:gosec // returning tokens to authenticated client
+	_ = json.NewEncoder(w).Encode(tokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	})
@@ -410,7 +410,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(tokenResponse{ //nolint:gosec // returning tokens to authenticated client
+	_ = json.NewEncoder(w).Encode(tokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	})
@@ -525,7 +525,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(tokenResponse{ //nolint:gosec // returning tokens to authenticated client
+	_ = json.NewEncoder(w).Encode(tokenResponse{
 		AccessToken:  newAccessToken,
 		RefreshToken: newRefreshToken,
 	})
@@ -589,7 +589,7 @@ func (h *Handler) ResendVerification(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !u.IsEmailVerified {
-		go h.sendVerificationEmail(context.Background(), u.ID, email) //nolint:gosec // fire-and-forget async email
+		go h.sendVerificationEmail(context.Background(), u.ID, email)
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -644,7 +644,7 @@ func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 			resetURL,
 		),
 	}
-	go func() { //nolint:gosec // fire-and-forget email send
+	go func() {
 		if _, sendErr := h.mail.Emails.SendWithContext(context.Background(), params); sendErr != nil {
 			h.log.ErrorContext(context.Background(), "failed to send reset email", "email", email, "error", sendErr)
 		}

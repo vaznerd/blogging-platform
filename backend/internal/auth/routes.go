@@ -7,6 +7,6 @@ const (
 	RouteRefresh            = "/api/v1/auth/refresh"
 	RouteVerifyEmail        = "/api/v1/auth/verify-email"
 	RouteResendVerification = "/api/v1/auth/resend-verification"
-	RouteForgotPassword     = "/api/v1/auth/forgot-password" //nolint:gosec // route string, not a credential
-	RouteResetPassword      = "/api/v1/auth/reset-password"  //nolint:gosec // route string, not a credential
+	RouteForgotPassword     = "/api/v1/auth/forgot-password"
+	RouteResetPassword      = "/api/v1/auth/reset-password" 
 )
