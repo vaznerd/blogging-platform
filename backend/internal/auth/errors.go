@@ -14,6 +14,7 @@ var (
 const (
 	ErrInternalServerMsg = "internal server error"
 	ErrInvalidBodyMsg    = "invalid request body"
+	errInvalidRefreshMsg = "invalid or expired refresh token"
 )
 
 const (

@@ -460,6 +460,19 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *Handler) rejectReusedRefreshToken(w http.ResponseWriter, r *http.Request, session *Session) {
+	h.log.WarnContext(r.Context(), "refresh token reuse detected", "user_id", session.UserID)
+	if revokeErr := h.service.RevokeAllUserSessions(r.Context(), session.UserID); revokeErr != nil {
+		h.log.ErrorContext(r.Context(), "failed to revoke sessions on token reuse", "error", revokeErr)
+	}
+	h.respondInvalidRefreshToken(w)
+}
+
+func (h *Handler) respondInvalidRefreshToken(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusUnauthorized)
+	_ = json.NewEncoder(w).Encode(errorResponse{Error: errInvalidRefreshMsg})
+}
+
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -471,17 +484,11 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	hash := HashRefreshToken(refreshToken)
 	session, err := h.service.GetSessionByRefreshTokenHash(r.Context(), hash)
 	if errors.Is(err, ErrSessionRevoked) {
-		h.log.WarnContext(r.Context(), "refresh token reuse detected", "user_id", session.UserID)
-		if revokeErr := h.service.RevokeAllUserSessions(r.Context(), session.UserID); revokeErr != nil {
-			h.log.ErrorContext(r.Context(), "failed to revoke sessions on token reuse", "error", revokeErr)
-		}
-		w.WriteHeader(http.StatusUnauthorized)
-		_ = json.NewEncoder(w).Encode(errorResponse{Error: "invalid or expired refresh token"})
+		h.rejectReusedRefreshToken(w, r, session)
 		return
 	}
 	if errors.Is(err, ErrSessionNotFound) || errors.Is(err, ErrSessionExpired) {
-		w.WriteHeader(http.StatusUnauthorized)
-		_ = json.NewEncoder(w).Encode(errorResponse{Error: "invalid or expired refresh token"})
+		h.respondInvalidRefreshToken(w)
 		return
 	}
 	if err != nil {
@@ -494,8 +501,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	u, err := h.user.GetByID(r.Context(), session.UserID)
 	if errors.Is(err, user.ErrNotFound) {
 		_ = h.service.RevokeSession(r.Context(), session.ID)
-		w.WriteHeader(http.StatusUnauthorized)
-		_ = json.NewEncoder(w).Encode(errorResponse{Error: "invalid or expired refresh token"})
+		h.respondInvalidRefreshToken(w)
 		return
 	}
 	if err != nil {
