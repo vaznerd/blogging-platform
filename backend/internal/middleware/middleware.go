@@ -7,10 +7,10 @@ import (
 
 type Middleware func(http.Handler) http.Handler
 
-func CreateStack(mw ...Middleware) Middleware {
+func CreateStack(middlewares ...Middleware) Middleware {
 	return func(next http.Handler) http.Handler {
-		for _, x := range slices.Backward(mw) {
-			next = x(next)
+		for _, middleware := range slices.Backward(middlewares) {
+			next = middleware(next)
 		}
 		return next
 	}
