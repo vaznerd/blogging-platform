@@ -30,5 +30,4 @@ func RegisterRoutes(
 	mux.HandleFunc("POST "+RouteResetPassword, h.ResetPassword)
 
 	mux.Handle("POST "+RouteLogout, authMW(http.HandlerFunc(h.Logout)))
-	mux.Handle("POST "+RouteChangePassword, authMW(http.HandlerFunc(h.ChangePassword)))
 }

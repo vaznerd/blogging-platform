@@ -663,64 +663,6 @@ func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(messageResponse{Message: "if the email exists, a reset link has been sent"})
 }
 
-func (h *Handler) ChangePassword(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	userID, ok := middleware.GetUserID(r)
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		_ = json.NewEncoder(w).Encode(errorResponse{Error: "unauthorized"})
-		return
-	}
-
-	u, err := h.user.GetByID(r.Context(), userID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		h.log.ErrorContext(r.Context(), "failed to get user", "error", err)
-		_ = json.NewEncoder(w).Encode(errorResponse{Error: ErrInternalServerMsg})
-		return
-	}
-
-	token, err := h.service.GeneratePasswordResetToken()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		h.log.ErrorContext(r.Context(), "failed to generate reset token", "error", err)
-		_ = json.NewEncoder(w).Encode(errorResponse{Error: ErrInternalServerMsg})
-		return
-	}
-
-	if storeErr := h.service.StorePasswordResetToken(r.Context(), u.ID, token); storeErr != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		h.log.ErrorContext(r.Context(), "failed to store reset token", "error", storeErr)
-		_ = json.NewEncoder(w).Encode(errorResponse{Error: ErrInternalServerMsg})
-		return
-	}
-
-	resetURL := fmt.Sprintf("%s/reset-password?token=%s", h.frontendURL, token)
-	params := &resend.SendEmailRequest{
-		From:    "Blogging Platform <onboarding@resend.dev>",
-		To:      []string{u.Email},
-		Subject: "Change your password",
-		Html: fmt.Sprintf(
-			`<p>Click <a href="%s">here</a> to change your password. This link expires in 1 hour.</p>`,
-			resetURL,
-		),
-	}
-	go func() {
-		if _, sendErr := h.mail.Emails.SendWithContext(context.Background(), params); sendErr != nil {
-			h.log.ErrorContext(
-				context.Background(),
-				"failed to send change password email",
-				"email", u.Email,
-				"error", sendErr,
-			)
-		}
-	}()
-
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(messageResponse{Message: "a password reset link has been sent to your email"})
-}
-
 func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
