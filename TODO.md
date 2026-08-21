@@ -29,21 +29,22 @@
 
 ## Post Domain
 
-- Create `repository.go` — interface + pgx implementation (CRUD, list with pagination, by author, by slug)
-- Create `service.go` — business logic (create, get by ID, update, delete, list, ownership checks)
-- Create `handler.go` — HTTP handlers (CreatePost, GetPost, UpdatePost, DeletePost, ListPosts, ListPostsByAuthor)
-- Create `router.go` — `RegisterRoutes` with public + protected routes
-- Register in `internal/server/router.go`
-- Wire dependencies in `cmd/server/main.go`
+- Implement 6 handler methods (repo + service are done, service is an interface):
+  - `CreatePost` — extract userID from context, parse JSON body, call service
+  - `GetPost` — parse `{postID}` from path, return post
+  - `ListPosts` — list posts with optional pagination
+  - `ListPostsByAuthor` — parse `{username}` from path, list their posts
+  - `UpdatePost` — parse `{postID}` from path, parse JSON body, verify ownership, call service
+  - `DeletePost` — parse `{postID}` from path, verify ownership, call service
 
 ## Comment Domain
 
-- Create `repository.go` — interface + pgx implementation (CRUD, list by post)
-- Create `service.go` — business logic (create, get, update, delete, list by post, ownership checks)
-- Create `handler.go` — HTTP handlers (CreateComment, GetComment, UpdateComment, DeleteComment, ListComments)
-- Create `router.go` — `RegisterRoutes` with public + protected routes
-- Register in `internal/server/router.go`
-- Wire dependencies in `cmd/server/main.go`
+- Implement 5 handler methods (repo + service are done, service is an interface):
+  - `CreateComment` — extract userID from context, parse `{postID}` from path, parse JSON body, call service
+  - `GetComment` — parse `{id}` from path, return comment
+  - `ListComments` — parse `{postID}` from path, list comments for the post
+  - `UpdateComment` — parse `{id}` from path, parse JSON body, verify ownership, call service
+  - `DeleteComment` — parse `{id}` from path, verify ownership, call service
 
 ## Infrastructure
 

@@ -240,16 +240,18 @@ Base path: `/api/v1`
 | GET | `/api/v1/posts` | No | List posts (paginated) |
 | POST | `/api/v1/posts` | Yes | Create post |
 | GET | `/api/v1/posts/{postID}` | No | Get post by ID |
-| PATCH | `/api/v1/posts/{postID}` | Yes | Update post (owner only) |
+| PUT | `/api/v1/posts/{postID}` | Yes | Update post (owner only) |
 | DELETE | `/api/v1/posts/{postID}` | Yes | Delete post (owner only) |
+| GET | `/api/v1/users/{username}/posts` | No | List posts by author (paginated) |
 
 ### Comments
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/v1/posts/{postID}/comments` | No | List comments on post |
+| GET | `/api/v1/posts/{postID}/comments` | No | List comments on post (paginated) |
 | POST | `/api/v1/posts/{postID}/comments` | Yes | Add comment to post |
-| PATCH | `/api/v1/comments/{id}` | Yes | Update comment (owner only) |
+| GET | `/api/v1/comments/{id}` | No | Get comment by ID |
+| PUT | `/api/v1/comments/{id}` | Yes | Update comment (owner only) |
 | DELETE | `/api/v1/comments/{id}` | Yes | Delete comment (owner only) |
 
 ### Tags
@@ -295,8 +297,10 @@ Listing endpoints support query parameters:
 | Category — handlers | Stubs (501) |
 | Tag — repository + service | Implemented |
 | Tag — handlers | Stubs (501) |
-| Post | Scaffold only (errors + routes) |
-| Comment | Scaffold only (errors + routes) |
+| Post — repository + service | Implemented |
+| Post — handlers | Stubs (501) |
+| Comment — repository + service | Implemented |
+| Comment — handlers | Stubs (501) |
 
 ---
 
@@ -507,10 +511,18 @@ All configuration is loaded from `backend/configs/config.yaml` with environment 
         │   └── service.go
         ├── post/                 # Blog posts
         │   ├── errors.go
-        │   └── routes.go
+        │   ├── handler.go
+        │   ├── repository.go
+        │   ├── routes.go
+        │   ├── router.go
+        │   └── service.go
         ├── comment/              # Comments
         │   ├── errors.go
-        │   └── routes.go
+        │   ├── handler.go
+        │   ├── repository.go
+        │   ├── routes.go
+        │   ├── router.go
+        │   └── service.go
         ├── tag/                  # Tags
         │   ├── errors.go
         │   ├── handler.go

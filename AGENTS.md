@@ -92,8 +92,8 @@ mux.HandleFunc("POST "+RouteRegister, h.Register)
 | user | done | done | done | done | done | done | **PARTIAL** — `Me` works; `GetUser`, `UpdateMe`, `DeleteMe` are stubs returning 501 |
 | category | done | done | done | stub | done | done | **HANDLERS STUB** — repo+service done, service is an interface |
 | tag | done | done | done | stub | done | done | **HANDLERS STUB** — repo+service done, service is an interface |
-| post | done | done | — | — | — | — | **SCAFFOLD ONLY** — just errors + routes |
-| comment | done | done | — | — | — | — | **SCAFFOLD ONLY** — just errors + routes |
+| post | done | done | done | stub | done | done | **HANDLERS STUB** — repo+service done, service is an interface |
+| comment | done | done | done | stub | done | done | **HANDLERS STUB** — repo+service done, service is an interface |
 
 ---
 
