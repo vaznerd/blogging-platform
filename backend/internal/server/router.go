@@ -7,7 +7,9 @@ import (
 
 	"codeberg.org/vaznerd/blogging-platform/internal/auth"
 	"codeberg.org/vaznerd/blogging-platform/internal/category"
+	"codeberg.org/vaznerd/blogging-platform/internal/comment"
 	"codeberg.org/vaznerd/blogging-platform/internal/middleware"
+	"codeberg.org/vaznerd/blogging-platform/internal/post"
 	"codeberg.org/vaznerd/blogging-platform/internal/tag"
 	"codeberg.org/vaznerd/blogging-platform/internal/user"
 	"github.com/resend/resend-go/v3"
@@ -18,6 +20,8 @@ func NewRouter(
 	authService *auth.Service,
 	categoryService category.Service,
 	tagService tag.Service,
+	postService post.Service,
+	commentService comment.Service,
 	log *slog.Logger,
 	mail *resend.Client,
 	debug bool,
@@ -32,6 +36,8 @@ func NewRouter(
 	user.RegisterRoutes(mux, userService, log, authMW)
 	category.RegisterRoutes(mux, categoryService, log, authMW)
 	tag.RegisterRoutes(mux, tagService, log, authMW)
+	post.RegisterRoutes(mux, postService, log, authMW)
+	comment.RegisterRoutes(mux, commentService, log, authMW)
 
 	if debug {
 		mux.HandleFunc("/debug/pprof/", pprof.Index)

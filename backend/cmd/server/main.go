@@ -15,8 +15,10 @@ import (
 
 	"codeberg.org/vaznerd/blogging-platform/internal/auth"
 	"codeberg.org/vaznerd/blogging-platform/internal/category"
+	"codeberg.org/vaznerd/blogging-platform/internal/comment"
 	"codeberg.org/vaznerd/blogging-platform/internal/config"
 	"codeberg.org/vaznerd/blogging-platform/internal/logger"
+	"codeberg.org/vaznerd/blogging-platform/internal/post"
 	"codeberg.org/vaznerd/blogging-platform/internal/server"
 	"codeberg.org/vaznerd/blogging-platform/internal/tag"
 	"codeberg.org/vaznerd/blogging-platform/internal/user"
@@ -144,11 +146,19 @@ func run() error {
 	tagRepository := tag.NewRepository(dbpool)
 	tagService := tag.NewService(tagRepository)
 
+	postRepository := post.NewRepository(dbpool)
+	postService := post.NewService(postRepository)
+
+	commentRepository := comment.NewRepository(dbpool)
+	commentService := comment.NewService(commentRepository)
+
 	router := server.NewRouter(
 		userService,
 		authService,
 		categoryService,
 		tagService,
+		postService,
+		commentService,
 		log,
 		mail,
 		cfg.App.Debug,
