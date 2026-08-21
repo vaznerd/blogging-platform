@@ -13,6 +13,6 @@ func RegisterRoutes(mux *http.ServeMux, service Service, log *slog.Logger, authM
 
 	mux.Handle("POST "+RouteTags, authMW(http.HandlerFunc(h.CreateTag)))
 	mux.Handle("DELETE "+RouteTagByName, authMW(http.HandlerFunc(h.DeleteTag)))
-	mux.Handle("POST "+RouteTags+"/post", authMW(http.HandlerFunc(h.AttachTagToPost)))
-	mux.Handle("DELETE "+RouteTags+"/post", authMW(http.HandlerFunc(h.DetachTagFromPost)))
+	mux.Handle("POST "+RoutePostTags, authMW(http.HandlerFunc(h.AttachTagToPost)))
+	mux.Handle("DELETE "+RoutePostTag, authMW(http.HandlerFunc(h.DetachTagFromPost)))
 }

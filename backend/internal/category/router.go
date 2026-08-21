@@ -14,6 +14,6 @@ func RegisterRoutes(mux *http.ServeMux, service Service, log *slog.Logger, authM
 	mux.Handle("POST "+RouteCategories, authMW(http.HandlerFunc(h.CreateCategory)))
 	mux.Handle("PUT "+RouteCategoryBySlug, authMW(http.HandlerFunc(h.UpdateCategory)))
 	mux.Handle("DELETE "+RouteCategoryBySlug, authMW(http.HandlerFunc(h.DeleteCategory)))
-	mux.Handle("POST "+RouteCategories+"/post", authMW(http.HandlerFunc(h.AttachCategoryToPost)))
-	mux.Handle("DELETE "+RouteCategories+"/post", authMW(http.HandlerFunc(h.DetachCategoryFromPost)))
+	mux.Handle("POST "+RoutePostCategories, authMW(http.HandlerFunc(h.AttachCategoryToPost)))
+	mux.Handle("DELETE "+RoutePostCategory, authMW(http.HandlerFunc(h.DetachCategoryFromPost)))
 }
