@@ -14,16 +14,16 @@ var (
 const (
 	ErrInternalServerMsg = "internal server error"
 	ErrInvalidBodyMsg    = "invalid request body"
-	errInvalidRefreshMsg = "invalid or expired refresh token"
+	ErrInvalidRefreshMsg = "invalid or expired refresh token"
 )
 
 const (
-	minPasswordLength = 8
-	minUsernameLength = 3
-	maxUsernameLength = 30
+	MinPasswordLength = 8
+	MinUsernameLength = 3
+	MaxUsernameLength = 30
 )
 
-const dummyBcryptHash = "$2a$12$anEPqngbDcEREqqvh3Cr8uOn9YwD/EzgslHp8wBnI414AM27jiQV2"
+const DummyBcryptHash = "$2a$12$anEPqngbDcEREqqvh3Cr8uOn9YwD/EzgslHp8wBnI414AM27jiQV2"
 
 type messageResponse struct {
 	Message string `json:"message"`

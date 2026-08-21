@@ -205,14 +205,14 @@ func (h *Handler) parseRegister(w http.ResponseWriter, r *http.Request) (string,
 		return "", "", "", false
 	}
 
-	if len(req.Username) < minUsernameLength || len(req.Username) > maxUsernameLength {
+	if len(req.Username) < MinUsernameLength || len(req.Username) > MaxUsernameLength {
 		w.WriteHeader(http.StatusBadRequest)
 		h.log.WarnContext(r.Context(), "invalid username length in Register")
 		_ = json.NewEncoder(w).Encode(errorResponse{Error: "username must be between 3 and 30 characters"})
 		return "", "", "", false
 	}
 
-	if len(req.Password) < minPasswordLength {
+	if len(req.Password) < MinPasswordLength {
 		w.WriteHeader(http.StatusBadRequest)
 		h.log.WarnContext(r.Context(), "password too short in Register")
 		_ = json.NewEncoder(w).Encode(errorResponse{Error: "password must be at least 8 characters"})
@@ -365,7 +365,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	u, err := h.user.GetByEmail(r.Context(), email)
 	if errors.Is(err, user.ErrNotFound) {
-		_ = h.service.ComparePassword(dummyBcryptHash, password)
+		_ = h.service.ComparePassword(DummyBcryptHash, password)
 		w.WriteHeader(http.StatusUnauthorized)
 		h.log.WarnContext(r.Context(), "invalid credentials in Login")
 		_ = json.NewEncoder(w).Encode(errorResponse{Error: "invalid credentials"})
@@ -470,7 +470,7 @@ func (h *Handler) rejectReusedRefreshToken(w http.ResponseWriter, r *http.Reques
 
 func (h *Handler) respondInvalidRefreshToken(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusUnauthorized)
-	_ = json.NewEncoder(w).Encode(errorResponse{Error: errInvalidRefreshMsg})
+	_ = json.NewEncoder(w).Encode(errorResponse{Error: ErrInvalidRefreshMsg})
 }
 
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
@@ -688,7 +688,7 @@ func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(req.NewPassword) < minPasswordLength {
+	if len(req.NewPassword) < MinPasswordLength {
 		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(errorResponse{Error: "new password must be at least 8 characters"})
 		return
