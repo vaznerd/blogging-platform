@@ -47,7 +47,6 @@ type RefreshTokenRepository interface {
 		expiresAt time.Time,
 	) error
 	GetSessionByRefreshTokenHash(ctx context.Context, hash []byte) (*Session, error)
-	UpdateLastUsedAt(ctx context.Context, id string) error
 	RevokeSession(ctx context.Context, id string) error
 	RevokeAllUserSessions(ctx context.Context, userID string) error
 	DeleteExpiredSessions(ctx context.Context) (int64, error)
@@ -125,18 +124,6 @@ func (r *refreshTokenRepository) GetSessionByRefreshTokenHash(
 		return nil, err
 	}
 	return s, nil
-}
-
-func (r *refreshTokenRepository) UpdateLastUsedAt(
-	ctx context.Context,
-	id string,
-) error {
-	_, err := r.db.Exec(
-		ctx,
-		`UPDATE sessions SET last_used_at = NOW() WHERE id = $1`,
-		id,
-	)
-	return err
 }
 
 func (r *refreshTokenRepository) RevokeSession(
