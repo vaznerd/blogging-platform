@@ -100,6 +100,21 @@ func connectRedis(cfg *config.Config, log *slog.Logger) (*redis.Client, error) {
 	return rdb, nil
 }
 
+func startSessionCleanup(authService *auth.Service, log *slog.Logger) {
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			rows, err := authService.DeleteExpiredSessions(context.Background())
+			if err != nil {
+				log.Error("failed to cleanup expired sessions", "error", err)
+			} else if rows > 0 {
+				log.Info("cleaned up expired sessions", "rows_deleted", rows)
+			}
+		}
+	}()
+}
+
 func run() error {
 	log, cfg, mail, err := bootstrap()
 	if err != nil {
@@ -161,18 +176,7 @@ func run() error {
 		}
 	}()
 
-	go func() {
-		ticker := time.NewTicker(1 * time.Hour)
-		defer ticker.Stop()
-		for range ticker.C {
-			rows, err := authService.DeleteExpiredSessions(context.Background())
-			if err != nil {
-				log.Error("failed to cleanup expired sessions", "error", err)
-			} else if rows > 0 {
-				log.Info("cleaned up expired sessions", "rows_deleted", rows)
-			}
-		}
-	}()
+	startSessionCleanup(authService, log)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
