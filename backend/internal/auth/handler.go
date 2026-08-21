@@ -470,7 +470,16 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 
 	hash := HashRefreshToken(refreshToken)
 	session, err := h.service.GetSessionByRefreshTokenHash(r.Context(), hash)
-	if errors.Is(err, ErrSessionNotFound) || errors.Is(err, ErrSessionRevoked) || errors.Is(err, ErrSessionExpired) {
+	if errors.Is(err, ErrSessionRevoked) {
+		h.log.WarnContext(r.Context(), "refresh token reuse detected", "user_id", session.UserID)
+		if revokeErr := h.service.RevokeAllUserSessions(r.Context(), session.UserID); revokeErr != nil {
+			h.log.ErrorContext(r.Context(), "failed to revoke sessions on token reuse", "error", revokeErr)
+		}
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(errorResponse{Error: "invalid or expired refresh token"})
+		return
+	}
+	if errors.Is(err, ErrSessionNotFound) || errors.Is(err, ErrSessionExpired) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(errorResponse{Error: "invalid or expired refresh token"})
 		return

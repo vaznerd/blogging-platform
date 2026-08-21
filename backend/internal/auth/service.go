@@ -126,7 +126,7 @@ func (s *Service) GetSessionByRefreshTokenHash(ctx context.Context, hash []byte)
 		return nil, err
 	}
 	if session.RevokedAt != nil {
-		return nil, ErrSessionRevoked
+		return session, ErrSessionRevoked
 	}
 	if time.Now().After(session.ExpiresAt) {
 		return nil, ErrSessionExpired
