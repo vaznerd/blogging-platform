@@ -239,16 +239,16 @@ Base path: `/api/v1`
 |--------|------|------|-------------|
 | GET | `/api/v1/posts` | No | List posts (paginated) |
 | POST | `/api/v1/posts` | Yes | Create post |
-| GET | `/api/v1/posts/{id}` | No | Get post by ID |
-| PATCH | `/api/v1/posts/{id}` | Yes | Update post (owner only) |
-| DELETE | `/api/v1/posts/{id}` | Yes | Delete post (owner only) |
+| GET | `/api/v1/posts/{postID}` | No | Get post by ID |
+| PATCH | `/api/v1/posts/{postID}` | Yes | Update post (owner only) |
+| DELETE | `/api/v1/posts/{postID}` | Yes | Delete post (owner only) |
 
 ### Comments
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/v1/posts/{id}/comments` | No | List comments on post |
-| POST | `/api/v1/posts/{id}/comments` | Yes | Add comment to post |
+| GET | `/api/v1/posts/{postID}/comments` | No | List comments on post |
+| POST | `/api/v1/posts/{postID}/comments` | Yes | Add comment to post |
 | PATCH | `/api/v1/comments/{id}` | Yes | Update comment (owner only) |
 | DELETE | `/api/v1/comments/{id}` | Yes | Delete comment (owner only) |
 
@@ -260,8 +260,8 @@ Base path: `/api/v1`
 | GET | `/api/v1/tags/{name}` | No | Get posts by tag |
 | POST | `/api/v1/tags` | Yes | Create tag |
 | DELETE | `/api/v1/tags/{name}` | Yes | Delete tag |
-| POST | `/api/v1/tags/post` | Yes | Attach tag to post |
-| DELETE | `/api/v1/tags/post` | Yes | Detach tag from post |
+| POST | `/api/v1/posts/{postID}/tags` | Yes | Attach tag to post |
+| DELETE | `/api/v1/posts/{postID}/tags/{name}` | Yes | Detach tag from post |
 
 ### Categories
 
@@ -272,8 +272,8 @@ Base path: `/api/v1`
 | POST | `/api/v1/categories` | Yes | Create category |
 | PUT | `/api/v1/categories/{slug}` | Yes | Update category |
 | DELETE | `/api/v1/categories/{slug}` | Yes | Delete category |
-| POST | `/api/v1/categories/post` | Yes | Attach category to post |
-| DELETE | `/api/v1/categories/post` | Yes | Detach category from post |
+| POST | `/api/v1/posts/{postID}/categories` | Yes | Attach category to post |
+| DELETE | `/api/v1/posts/{postID}/categories/{slug}` | Yes | Detach category from post |
 
 ### Pagination
 

@@ -14,8 +14,8 @@
   - `ListCategories` — list all categories with optional pagination
   - `UpdateCategory` — parse `{slug}` from path, parse JSON body, call service
   - `DeleteCategory` — parse `{slug}` from path, call service
-  - `AttachCategoryToPost` — parse `{slug}` + `{id}` from path, call service
-  - `DetachCategoryFromPost` — parse `{slug}` + `{id}` from path, call service
+  - `AttachCategoryToPost` — parse `{postID}` + `{slug}` from path, call service
+  - `DetachCategoryFromPost` — parse `{postID}` + `{slug}` from path, call service
 
 ## Tag Domain
 
@@ -24,8 +24,8 @@
   - `GetTag` — parse `{name}` from path, return tag
   - `ListTags` — list all tags with optional pagination
   - `DeleteTag` — parse `{name}` from path, call service
-  - `AttachTagToPost` — parse `{name}` + `{id}` from path, call service
-  - `DetachTagFromPost` — parse `{name}` + `{id}` from path, call service
+  - `AttachTagToPost` — parse `{postID}` + `{name}` from path, call service
+  - `DetachTagFromPost` — parse `{postID}` + `{name}` from path, call service
 
 ## Post Domain
 
