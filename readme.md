@@ -153,7 +153,7 @@ Each domain follows this structure:
 internal/<domain>/
 ├── errors.go        # Sentinel errors (ErrNotFound, ErrForbidden, etc.)
 ├── routes.go        # Path constants (RouteXxx = "/api/v1/...")
-├── router.go        # RegisterRoutes(mux, service, log, mail)
+├── router.go        # RegisterRoutes(mux, service, log, authMW)
 ├── handler.go       # HTTP handlers
 ├── service.go       # Business logic
 └── repository.go    # Database access (pgx)

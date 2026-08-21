@@ -50,7 +50,7 @@ Handler (HTTP) → Service (Business Logic) → Repository (Database)
 internal/<domain>/
 ├── errors.go           # Sentinel errors (ErrNotFound, ErrForbidden, etc.)
 ├── routes.go           # Path constants (RouteXxx = "/api/v1/...")
-├── router.go           # RegisterRoutes(mux, service, log, mail, authMW)
+├── router.go           # RegisterRoutes(mux, service, log, authMW)
 ├── handler.go          # HTTP handlers
 ├── service.go          # Business logic
 └── repository.go       # Repository interface + concrete pgx implementation
@@ -134,7 +134,7 @@ go build ./...
 4. Create `handler.go` — handler struct + constructor (stub methods)
 5. Create `service.go` — service struct + constructor (stub methods)
 6. Create `repository.go` — repository interface + struct + constructor
-7. Create `router.go` — `RegisterRoutes(mux, service, log, mail)`
+7. Create `router.go` — `RegisterRoutes(mux, service, log, authMW)`
 8. Register in `internal/server/router.go`
 9. Wire dependencies in `cmd/server/main.go`
 
