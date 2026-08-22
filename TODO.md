@@ -1,9 +1,5 @@
 # TODO
 
-## User Domain
-
-- Rename `user` local variables in handlers/services to avoid shadowing the `user` package name (`Me`, `GetUser`, `UpdateMe` in handler.go)
-
 ## Category Domain
 
 - Implement 7 handler methods (repo + service are done, service is an interface):
