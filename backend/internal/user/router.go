@@ -12,5 +12,5 @@ func RegisterRoutes(mux *http.ServeMux, service Service, log *slog.Logger, authM
 
 	mux.Handle("GET "+RouteMe, authMW(http.HandlerFunc(h.Me)))
 	mux.Handle("PATCH "+RouteMe, authMW(http.HandlerFunc(h.UpdateMe)))
-	mux.Handle("DELETE "+RouteMe, authMW(http.HandlerFunc(h.DeleteMe)))
+	mux.Handle("DELETE "+RouteMe, authMW(http.HandlerFunc(h.DeleteUser)))
 }
