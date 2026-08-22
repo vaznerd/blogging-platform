@@ -61,7 +61,7 @@ cp .env.example .env
 ./scripts/gen-jwt-secret.sh
 # Edit .env — set RESEND_API
 
-# Start infrastructure
+# Start infrastructure (needs docker-compose.dev.yml — not yet committed, see TODO.md)
 make dev-up
 
 # Run migrations
@@ -436,7 +436,9 @@ Files live in `backend/migrations/`:
 
 ## Deployment
 
-### Docker
+> **Planned** — `backend/Dockerfile` and `docker-compose.prod.yml` are not implemented yet (tracked in [TODO](TODO.md)). The `prod-*` Makefile targets exist but require these files. `docker-compose.dev.yml` is likewise still pending.
+
+### Docker (planned)
 
 ```bash
 # Build
@@ -454,10 +456,10 @@ docker run -p 8080:8080 \
 ### Docker Compose
 
 ```bash
-# Development
+# Development (requires docker-compose.dev.yml)
 make dev-up
 
-# Production
+# Production (requires docker-compose.prod.yml)
 make prod-up
 ```
 
