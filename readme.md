@@ -82,7 +82,7 @@ JWT_SECRET="..."               # 256-bit base64 (run gen-jwt-secret.sh)
 
 # Optional overrides (defaults in configs/config.yaml)
 DB__PASSWORD=postgres
-DB__HOST__GO=localhost
+DB__CONTAINER_HOST=postgres
 REDIS__HOST=localhost
 ```
 
@@ -321,20 +321,21 @@ PostgreSQL is the primary database. Schema is managed via versioned SQL migratio
 
 **users** — user accounts
 ```sql
-id              UUID PRIMARY KEY
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
 username        VARCHAR(255) UNIQUE NOT NULL
 email           VARCHAR(255) UNIQUE NOT NULL
 password_hash   VARCHAR(255) NOT NULL
 bio             TEXT DEFAULT ''
 avatar_url      VARCHAR(512) DEFAULT ''
 role            VARCHAR(20) DEFAULT 'user'
+is_email_verified BOOLEAN DEFAULT FALSE
 created_at      TIMESTAMPTZ
 updated_at      TIMESTAMPTZ
 ```
 
 **sessions** — JWT refresh token sessions
 ```sql
-session_id      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
 user_id         UUID REFERENCES users(id) ON DELETE CASCADE
 refresh_token_hash BYTEA UNIQUE NOT NULL
 user_agent      TEXT DEFAULT ''
@@ -347,7 +348,7 @@ created_at      TIMESTAMPTZ
 
 **posts** — blog posts
 ```sql
-id              UUID PRIMARY KEY
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
 author_id       UUID REFERENCES users(id) ON DELETE CASCADE
 title           VARCHAR(500) NOT NULL
 slug            VARCHAR(500) NOT NULL
@@ -362,7 +363,7 @@ UNIQUE(author_id, slug)
 
 **comments** — post comments
 ```sql
-id              UUID PRIMARY KEY
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
 post_id         UUID REFERENCES posts(id) ON DELETE CASCADE
 author_id       UUID REFERENCES users(id) ON DELETE CASCADE
 content         TEXT NOT NULL
@@ -372,7 +373,7 @@ updated_at      TIMESTAMPTZ
 
 **tags** — post tags
 ```sql
-id              UUID PRIMARY KEY
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
 name            VARCHAR(255) UNIQUE NOT NULL
 ```
 
@@ -385,7 +386,7 @@ PRIMARY KEY (post_id, tag_id)
 
 **categories** — post categories
 ```sql
-id              UUID PRIMARY KEY
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
 name            VARCHAR(255) NOT NULL
 slug            VARCHAR(255) UNIQUE NOT NULL
 description     TEXT DEFAULT ''
@@ -402,7 +403,7 @@ PRIMARY KEY (post_id, category_id)
 
 **email_verification_tokens** — email verification
 ```sql
-id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
 user_id         UUID REFERENCES users(id) ON DELETE CASCADE
 token_hash      BYTEA UNIQUE NOT NULL
 expires_at      TIMESTAMPTZ
@@ -411,7 +412,7 @@ created_at      TIMESTAMPTZ
 
 **password_reset_tokens** — password reset
 ```sql
-id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY
+id              UUID PRIMARY KEY DEFAULT gen_random_uuid()
 user_id         UUID REFERENCES users(id) ON DELETE CASCADE
 token_hash      BYTEA UNIQUE NOT NULL
 expires_at      TIMESTAMPTZ
@@ -428,9 +429,11 @@ make dev-migrate-version  # Show current version
 
 Files live in `backend/migrations/`:
 ```text
-{YYYYMMDDHHMMSS}_{description}.up.sql
-{YYYYMMDDHHMMSS}_{description}.down.sql
+{NNN}_{description}.up.sql
+{NNN}_{description}.down.sql
 ```
+
+Current migrations: 001–009 (users, sessions, posts, comments, tags, post_tags, categories + post_categories, email verification, password reset tokens).
 
 ---
 
@@ -542,8 +545,6 @@ All configuration is loaded from `backend/configs/config.yaml` with environment 
         │   ├── routes.go
         │   ├── router.go
         │   └── service.go
-        ├── db/                   # Database utilities
-        │   └── db.go
         ├── config/               # Configuration
         │   ├── config.go
         │   └── validator.go
