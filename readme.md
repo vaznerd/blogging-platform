@@ -472,6 +472,7 @@ All configuration is loaded from `backend/configs/config.yaml` with environment 
 .
 ├── .env                          # Environment variables
 ├── .env.example                  # Template
+├── LICENSE
 ├── Makefile                      # Dev commands
 ├── readme.md
 ├── scripts/
@@ -553,4 +554,4 @@ All configuration is loaded from `backend/configs/config.yaml` with environment 
 
 ## License
 
-See [LICENSE](LICENSE).
+This project is licensed under the [MIT](LICENSE) license.
