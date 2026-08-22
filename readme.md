@@ -145,6 +145,8 @@ Route-level (protected routes):
   4. Auth — extracts Bearer token, validates JWT, sets userID/role in context
 ```
 
+When `app.debug` is true, `net/http/pprof` handlers are mounted at `/debug/pprof/`.
+
 ### Domain Package Structure
 
 Each domain follows this structure:
@@ -182,6 +184,13 @@ JWT tokens use HMAC-SHA256 signing.
   "iat": 1739999100
 }
 ```
+
+**Session security:**
+
+- Refresh rotation — each refresh mints new tokens and revokes the old session
+- Reuse detection — presenting a revoked refresh token revokes **all** of that user's sessions
+- A background loop purges expired sessions every hour
+- Verification and password-reset emails link into `app.frontend_url` (`/verify-email?token=...`, `/reset-password?token=...`); CORS origin is also derived from `frontend_url`
 
 **Protected routes** require `Authorization: Bearer <token>` header.
 
