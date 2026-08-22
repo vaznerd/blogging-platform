@@ -30,7 +30,7 @@ help:
 	@echo "  make prod-migrate-version - Show current migration version"
 
 run-backend:
-	cd backend && go run ./cmd/server
+	cd backend && air -c .air.toml
 
 run-frontend:
 	cd frontend && npm run dev
