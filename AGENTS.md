@@ -56,6 +56,8 @@ internal/<domain>/
 └── repository.go       # Repository interface + concrete pgx implementation
 ```
 
+**RegisterRoutes signatures**: standard domains use `RegisterRoutes(mux, service, log, authMW)`. The exception is auth: `auth.RegisterRoutes(mux, authService, userService, log, mail, frontendURL, trustedProxies)` — it depends on `user.Service` for username validation during registration, plus the Resend client, frontend URL, and trusted proxies.
+
 **Key Rules**:
 - Handlers parse requests and write responses only
 - Services contain all business logic
@@ -103,8 +105,8 @@ mux.HandleFunc("POST "+RouteRegister, h.Register)
 
 ```bash
 make dev-up            # Start dev containers (postgres, redis)
-make run-backend       # Start Go API server with Air hot reload
-make lint-backend      # Run go vet
+make run-backend       # Start Go API server with Air hot reload (air -c .air.toml)
+make lint-backend      # Run golangci-lint
 make format-backend    # Format code with gofumpt
 make dev-down          # Stop dev containers
 make dev-down-force    # Stop and remove volumes
@@ -113,6 +115,8 @@ make dev-migrate-up    # Apply pending migrations
 make dev-migrate-down  # Rollback last migration
 make dev-migrate-version # Show current migration version
 ```
+
+Prod targets (`prod-up`, `prod-down`, `prod-down-force`, `prod-logs`, `prod-migrate-*`) exist in the Makefile but require `docker-compose.prod.yml`, which doesn't exist yet (tracked in TODO.md).
 
 ### Pre-Commit Checklist
 
@@ -195,8 +199,10 @@ The auth domain uses a hybrid JWT + database sessions approach:
 - **Session validation** — hash the refresh token, look up in DB, check `revoked_at` and `expires_at`.
 - **Email verification** — `email_verification_tokens` table, 24h expiry, SHA-256 hashed tokens.
 - **Password reset** — `password_reset_tokens` table, 1h expiry, SHA-256 hashed tokens.
+- **Reuse detection** — presenting a revoked refresh token revokes all of that user's sessions.
+- **Cleanup loop** — `startSessionCleanup` in `cmd/server/main.go` purges expired sessions hourly.
 
-Token defaults: access = 15m, refresh = 168h (7 days). Configurable in `config.yaml`.
+Token defaults: access = 15m, refresh = 168h (7 days). Configurable in `config.yaml`. Verification and password-reset emails link into `app.frontend_url`; the same value is used as the CORS origin.
 
 ```go
 hash := auth.HashRefreshToken(refreshToken)
@@ -305,6 +311,8 @@ Uses `koanf` with YAML file + env overrides:
 - `.env` file auto-loaded by `godotenv/autoload`
 - Validation in `config.go` includes production-specific checks (debug must be false, DB password required, SSL mode cannot be "disable")
 - Trusted proxies: `server.trusted_proxies` in YAML accepts CIDR notation (`10.0.0.0/8`) or single IPs (`127.0.0.1`). Used by `auth.Handler.extractIP` to walk `X-Forwarded-For` right-to-left.
+- Frontend URL: `app.frontend_url` — base URL for verification/reset email links; also passed as the CORS origin.
+- Debug: when `app.debug` is true, pprof handlers mount at `/debug/pprof/`.
 
 ---
 
@@ -314,7 +322,7 @@ Uses `koanf` with YAML file + env overrides:
 - Table-driven tests preferred
 - Repository tests use a test PostgreSQL instance
 - Handler tests use `httptest.NewRecorder()` + `httptest.NewRequest()`
-- No tests exist yet — 8 test suites tracked in `TODO.md`
+- No tests exist yet — 7 test suites tracked in `TODO.md` (auth, user, category, tag, post, comment, middleware)
 
 ```bash
 go test ./...
