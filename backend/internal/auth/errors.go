@@ -19,8 +19,6 @@ const (
 
 const (
 	MinPasswordLength = 8
-	MinUsernameLength = 3
-	MaxUsernameLength = 30
 )
 
 const DummyBcryptHash = "$2a$12$anEPqngbDcEREqqvh3Cr8uOn9YwD/EzgslHp8wBnI414AM27jiQV2"

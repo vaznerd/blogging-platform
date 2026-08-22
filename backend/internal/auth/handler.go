@@ -205,13 +205,6 @@ func (h *Handler) parseRegister(w http.ResponseWriter, r *http.Request) (string,
 		return "", "", "", false
 	}
 
-	if len(req.Username) < MinUsernameLength || len(req.Username) > MaxUsernameLength {
-		w.WriteHeader(http.StatusBadRequest)
-		h.log.WarnContext(r.Context(), "invalid username length in Register")
-		_ = json.NewEncoder(w).Encode(errorResponse{Error: "username must be between 3 and 30 characters"})
-		return "", "", "", false
-	}
-
 	if len(req.Password) < MinPasswordLength {
 		w.WriteHeader(http.StatusBadRequest)
 		h.log.WarnContext(r.Context(), "password too short in Register")
@@ -313,6 +306,14 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict)
 		h.log.WarnContext(r.Context(), "email or username already exists", "error", err)
 		_ = json.NewEncoder(w).Encode(errorResponse{Error: "email or username already exists"})
+		return
+	}
+	if errors.Is(err, user.ErrInvalidInput) {
+		w.WriteHeader(http.StatusBadRequest)
+		h.log.WarnContext(r.Context(), "invalid username", "error", err)
+		_ = json.NewEncoder(w).Encode(errorResponse{
+			Error: "username must be 3-30 characters and contain only lowercase letters, digits, '_' or '-'",
+		})
 		return
 	}
 	if err != nil {
