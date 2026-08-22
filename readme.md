@@ -290,9 +290,9 @@ Listing endpoints support query parameters:
 | Domain | Status |
 |--------|--------|
 | Auth | All endpoints implemented |
-| User — Repo methods | CreateUser, GetByEmail, GetByID, MarkEmailVerified, UpdatePassword done |
-| User — Me handler | Implemented |
-| User — GetUser, UpdateMe, DeleteMe | Stubs (501) |
+| User — Repo methods | All implemented incl. UpdateProfile, DeleteAccount |
+| User — Handlers | Me, GetUser, UpdateMe, DeleteUser implemented |
+| User — Account deletion | Anonymizes profile to "Deleted User", preserves posts/comments, revokes sessions/tokens |
 | Category — repository + service | Implemented |
 | Category — handlers | Stubs (501) |
 | Tag — repository + service | Implemented |

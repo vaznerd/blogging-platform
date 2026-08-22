@@ -2,9 +2,7 @@
 
 ## User Domain
 
-- Implement `GetByUsername` — repo method, service method, handler (parse `{username}` from path, return profile)
-- Implement `Update` — repo method (bio, avatar_url, username), service method (`UpdateProfile`), handler (`UpdateMe` — extract userID from context, parse JSON body)
-- Implement `Delete` — repo method, service method (`DeleteAccount`), handler (`DeleteMe` — extract userID, verify password, delete account)
+- Rename `user` local variables in handlers/services to avoid shadowing the `user` package name (`Me`, `GetUser`, `UpdateMe` in handler.go)
 
 ## Category Domain
 

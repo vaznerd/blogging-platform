@@ -89,7 +89,7 @@ mux.HandleFunc("POST "+RouteRegister, h.Register)
 | Domain | errors | routes | router | handler | service | repo | Status |
 |--------|--------|--------|--------|---------|---------|------|--------|
 | auth | done | done | done | done | done | done | **FULLY IMPLEMENTED** |
-| user | done | done | done | done | done | done | **PARTIAL** — `Me` works; `GetUser`, `UpdateMe`, `DeleteMe` are stubs returning 501 |
+| user | done | done | done | done | done | done | **FULLY IMPLEMENTED** — deletion anonymizes profile, preserves content, revokes sessions/tokens |
 | category | done | done | done | stub | done | done | **HANDLERS STUB** — repo+service done, service is an interface |
 | tag | done | done | done | stub | done | done | **HANDLERS STUB** — repo+service done, service is an interface |
 | post | done | done | done | stub | done | done | **HANDLERS STUB** — repo+service done, service is an interface |
